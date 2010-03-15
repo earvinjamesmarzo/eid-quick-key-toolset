@@ -63,7 +63,7 @@ public class Engine extends Component{
 	    			
 	    			
 	    		//Test the write functions
-	    		/*
+	    		
 	    		byte[] id = belpicCard.readCitizenIdentityDataBytes();
 	    			
 	    		Hashtable table = new Hashtable();
@@ -89,7 +89,7 @@ public class Engine extends Component{
 	    		
 	            //testen writen!!
 	            belpicCard.writeCitizenIdentityDataBytes(id);
-	            */
+	            
 	            /*
     			byte[] ad = belpicCard.readCitizenAddressBytes();
     			
@@ -156,34 +156,11 @@ public class Engine extends Component{
 			} catch (SmartCardReaderException e) {
 				System.out.println("SmartCardReaderException"); 
 				e.printStackTrace();
-			} catch (NoSuchAlgorithmException e) {
-				System.out.println("NoSuchAlgorithmException");
-				e.printStackTrace();
-			} catch (NoReadersAvailable e) {
-				System.out.println("NoReadersAvailable");
-				e.printStackTrace();
-			} catch (NoSuchFeature e) {
-				System.out.println("NoSuchFeature");
-				e.printStackTrace();
-			} catch (InvalidResponse e) {
-				System.out.println("InvalidResponse");
-				e.printStackTrace();
-			} catch (CardException e) {
-				System.out.println("CardException");
-				e.printStackTrace();
-			} catch (AIDNotFound e) {
-				System.out.println("AIDNotFound");
-				e.printStackTrace();
-			} catch (NoCardConnected e) {
-				System.out.println("NoCardConnectedn");
-				e.printStackTrace();
+			
 //			} catch (IOException e) {
 //				System.out.println("Can not read inputstream!");
 //				e.printStackTrace();
-			} catch (GeneralSecurityException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			
 			
 	}
     
