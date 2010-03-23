@@ -20,4 +20,6 @@ public final class BelpicCard extends EidCard implements BelpicCommandsEngine {
 	public void reActivateCard(String puk1, String puk2) throws InvalidPinException,InvalidResponse,NoReadersAvailable,NoSuchFeature,SmartCardReaderException,UnknownCardException, NoSuchAlgorithmException, NoCardConnected, CardException, AIDNotFound{
 		reActivate(puk1 ,puk2);
 	}
+
+	
 }

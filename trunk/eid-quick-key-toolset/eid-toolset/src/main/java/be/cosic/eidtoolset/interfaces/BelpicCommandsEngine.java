@@ -37,8 +37,9 @@ public interface BelpicCommandsEngine extends EidCardCommandsInterface {
 
 	//TODO check if this should be here and how to use it and if correct value
 	//IF the aid is intrinsic to the belgian eid applet than this should be here
-	public final static byte[] BELPIC_EID_CARD_AID = {(byte)0xa0, (byte)0x00, (byte)0x00, (byte)0x01, 
-			 (byte)0x77, (byte)0x50, (byte)0x4B, (byte)0x43, (byte)0x53, (byte)0x2D, (byte)0x31, (byte)0x35};
+	public final static byte[] BELPIC_EID_CARD_AID = {(byte)0xa0, (byte)0x00, (byte)0x00, (byte)0x00, 
+			 (byte)0x30, (byte)0x29, (byte)0x05, (byte)0x70, (byte)0x00, (byte)0xAD, 
+			 (byte)0x13, (byte)0x10, (byte)0x01, (byte)0x01, (byte)0xFF};
 
 	public final static byte BELPIC_EID_CARD_CLA = (byte)0x00;
 	
@@ -49,9 +50,10 @@ public interface BelpicCommandsEngine extends EidCardCommandsInterface {
 		(byte) 0x04, //  p1: select applet
 		(byte) 0x00, //  p2: select applet
 		(byte) BELPIC_EID_CARD_AID.length, // the length of the AID: Lc
-		(byte)0xa0, (byte)0x00, (byte)0x00, (byte)0x01, 
-		(byte)0x77, (byte)0x50, (byte)0x4B, (byte)0x43, 
-		(byte)0x53, (byte)0x2D, (byte)0x31, (byte)0x35, // the AID
+		(byte)0xa0, (byte)0x00, (byte)0x00, (byte)0x00, 
+		 (byte)0x30, (byte)0x29, (byte)0x05, (byte)0x70, 
+		 (byte)0x00, (byte)0xAD, (byte)0x13, (byte)0x10, 
+		 (byte)0x01, (byte)0x01, (byte)0xFF, // the AID
 		(byte) 0x02 //  response length: Le
 	};
 	

@@ -55,6 +55,12 @@ public class Engine extends Component{
 	        	BelpicCard belpicCard = null;
 	    		
 	    			belpicCard = new BelpicCard("eidTool");
+	    			
+	    			byte[] id = belpicCard.readCitizenIdentityDataBytes();
+	    		//byte[] atr = belpicCard.getATR();
+	    		
+	    		//System.out.println("card ATR: " + TextUtils.hexDump(atr));
+	            
 	    		
 	    		//Test the eid functions: all implemented?
 	    			
@@ -63,14 +69,14 @@ public class Engine extends Component{
 	    			
 	    			
 	    		//Test the write functions
-	    		
+	    		/*
 	    		byte[] id = belpicCard.readCitizenIdentityDataBytes();
 	    			
 	    		Hashtable table = new Hashtable();
 	            
 	            IdentityDataParser.ParseIdentityData(id,table);
 	            
-	            //System.out.println("data of cardholder in array: " + TextUtils.hexDump(id));
+	            System.out.println("data of cardholder in array: " + TextUtils.hexDump(id));
 	            System.out.println("datalength: " + id.length);
 	            System.out.println("parsed data of the cardholder: " + table.toString());
 	    		
@@ -80,7 +86,7 @@ public class Engine extends Component{
 	            
 	            id = IdentityDataParser.ParseHashTableToIdentityData(table);
 	            
-	            //System.out.println("data of cardholder in array: " + TextUtils.hexDump(id));
+	            System.out.println("new data of cardholder in array: " + TextUtils.hexDump(id));
 	            System.out.println("datalength: " + id.length);   
 	            
 	            IdentityDataParser.ParseIdentityData(id,table);
@@ -150,12 +156,11 @@ public class Engine extends Component{
 	        	 
 	        	 img = (BufferedImage) Toolkit.getDefaultToolkit().createImage(photo);*/
 	        
-	        } catch (UnknownCardException e) {
-				System.out.println("UnknownCardException"); 
+	        } catch (Exception e) {
+				System.out.println("Exception"); 
 				e.printStackTrace();
-			} catch (SmartCardReaderException e) {
-				System.out.println("SmartCardReaderException"); 
-				e.printStackTrace();
+			
+			}
 			
 //			} catch (IOException e) {
 //				System.out.println("Can not read inputstream!");

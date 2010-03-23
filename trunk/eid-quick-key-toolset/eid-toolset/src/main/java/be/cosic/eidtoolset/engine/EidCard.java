@@ -848,4 +848,10 @@ public class EidCard extends SmartCard implements EidCardInterface,
 			smartCardReaderShouldBeInitialized = false;
 		}
 	}
+	
+	
+	
+	
+	
+	
 }
