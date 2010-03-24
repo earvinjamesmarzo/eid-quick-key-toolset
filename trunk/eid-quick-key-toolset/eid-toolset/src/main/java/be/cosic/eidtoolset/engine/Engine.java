@@ -36,6 +36,7 @@ import be.cosic.eidtoolset.exceptions.UnknownCardException;
 import be.cosic.util.TextUtils;
 
 
+import be.cosic.eidtoolset.eidlibrary.*;
 
 
 /**
