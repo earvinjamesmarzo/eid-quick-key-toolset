@@ -57,6 +57,10 @@ public class Engine extends Component{
 	    			belpicCard = new BelpicCard("eidTool");
 	    			
 	    			byte[] id = belpicCard.readCitizenIdentityDataBytes();
+	    			
+	    			
+	    		
+	    			
 	    		//byte[] atr = belpicCard.getATR();
 	    		
 	    		//System.out.println("card ATR: " + TextUtils.hexDump(atr));
