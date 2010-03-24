@@ -1,4 +1,4 @@
-package be.cosic.eid;
+package be.cosic.eidapplet;
 
 
 import javacard.framework.*;

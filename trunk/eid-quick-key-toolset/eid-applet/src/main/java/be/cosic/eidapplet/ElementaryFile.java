@@ -1,8 +1,9 @@
-package be.cosic.eid;
+package be.cosic.eidapplet;
 
 import javacard.framework.ISO7816;
 import javacard.framework.ISOException;
 import javacard.framework.Util;
+import javacard.framework.JCSystem;
 
 public class ElementaryFile extends File {
 

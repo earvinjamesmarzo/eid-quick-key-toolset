@@ -12,5 +12,6 @@
   </properties>
   <modules>
     <module>eid-toolset</module>
+	<module>eid-applet</module>
   </modules>
 </project>
