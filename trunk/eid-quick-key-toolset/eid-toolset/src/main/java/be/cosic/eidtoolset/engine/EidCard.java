@@ -5,6 +5,9 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Frame;
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateFactory;
@@ -12,8 +15,17 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPublicKey;
 
 import javax.smartcardio.CardException;
+import javax.xml.bind.DatatypeConverter;
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
 
 
+import be.cosic.eidtoolset.eidlibrary.MasterFile;
+import be.cosic.eidtoolset.eidlibrary.ObjectFactory;
+import be.cosic.eidtoolset.eidlibrary.MasterFile.BelPicDirectory;
+import be.cosic.eidtoolset.eidlibrary.MasterFile.IDDirectory;
 import be.cosic.eidtoolset.exceptions.AIDNotFound;
 import be.cosic.eidtoolset.exceptions.GeneralSecurityException;
 import be.cosic.eidtoolset.exceptions.InvalidPinException;
@@ -69,14 +81,51 @@ public class EidCard extends SmartCard implements EidCardInterface,
 
 	private int myType = EidCardInterface.GENERIC_EID_CARD;
 	
+	private ObjectFactory of;
+	private MasterFile mf;
+	
 
 	public EidCard(int type, String appName) {
 		
 		myType = type;
+		
+		of = new ObjectFactory();
+		mf = of.createMasterFile();
+		mf.setDirFile(of.createMasterFileDirFile());
+		
+		BelPicDirectory bpd = of.createMasterFileBelPicDirectory();
+		bpd.setObjectDirectoryFile(of.createMasterFileBelPicDirectoryObjectDirectoryFile());
+		bpd.setTokenInfo(of.createMasterFileBelPicDirectoryTokenInfo());
+		bpd.setAuthenticationObjectDirectoryFile(of.createMasterFileBelPicDirectoryAuthenticationObjectDirectoryFile());
+		bpd.setPrivateKeyDirectoryFile(of.createMasterFileBelPicDirectoryPrivateKeyDirectoryFile());
+		bpd.setCertificateDirectoryFile(of.createMasterFileBelPicDirectoryCertificateDirectoryFile());
+		bpd.setAuthenticationCertificate(of.createMasterFileBelPicDirectoryAuthenticationCertificate());
+		bpd.setNonRepudiationCertificate(of.createMasterFileBelPicDirectoryNonRepudiationCertificate());
+		bpd.setCaCertificate(of.createMasterFileBelPicDirectoryCaCertificate());
+		bpd.setRootCaCertificate(of.createMasterFileBelPicDirectoryRootCaCertificate());
+		bpd.setRrnCertificate(of.createMasterFileBelPicDirectoryRrnCertificate());
+		
+		IDDirectory idd = of.createMasterFileIDDirectory();
+		idd.setIdentityFile(of.createMasterFileIDDirectoryIdentityFile());
+		idd.setIdentityFileSignature(of.createMasterFileIDDirectoryIdentityFileSignature());
+		idd.setAddressFile(of.createMasterFileIDDirectoryAddressFile());
+		idd.setAddressFileSignature(of.createMasterFileIDDirectoryAddressFileSignature());
+		idd.setPhotoFile(of.createMasterFileIDDirectoryPhotoFile());
+		idd.setCaRoleIDFile(of.createMasterFileIDDirectoryCaRoleIDFile());
+		idd.setPreferencesFile(of.createMasterFileIDDirectoryPreferencesFile());
+		
+		
+		mf.setBelPicDirectory(bpd);
+		mf.setIDDirectory(idd);
+		
 	}
 
 	public int returnMyType() {
 		return myType;
+	}
+	
+	public MasterFile returnMasterFile() {
+		return mf;
 	}
 	
 	
@@ -230,125 +279,265 @@ public class EidCard extends SmartCard implements EidCardInterface,
 	
 
 	public byte[] readAuthCertificateBytes() throws NoSuchFeature {
+		if (mf.getBelPicDirectory().getAuthenticationCertificate().getFileData() == null)
 			try {
 				lookForSmartCard();
-				authenticationCertificateBytes = readBinaryFile(selectAuthenticationCertificateCommand);
+				mf.getBelPicDirectory().getAuthenticationCertificate().setFileData(readBinaryFile(selectAuthenticationCertificateCommand));
 
 			} catch (Exception e) {
 				e.printStackTrace();
 				throw new NoSuchFeature();
 			}
-		return authenticationCertificateBytes;
+		return mf.getBelPicDirectory().getAuthenticationCertificate().getFileData();
 	}
 
 	public byte[] readNonRepCertificateBytes() throws NoSuchFeature {
+		if (mf.getBelPicDirectory().getNonRepudiationCertificate().getFileData() == null)
 			try {
 				lookForSmartCard();
-				nonRepudiationCertificateBytes = readBinaryFile(selectNonRepudiationCertificateCommand);
+				mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(readBinaryFile(selectNonRepudiationCertificateCommand));
 
 			} catch (Exception e) {
 				e.printStackTrace();
 				throw new NoSuchFeature();
 			}
-		return nonRepudiationCertificateBytes;
+		return mf.getBelPicDirectory().getNonRepudiationCertificate().getFileData();
 	}
 
 	public byte[] readCACertificateBytes() throws NoSuchFeature {
 		try {
+			if (mf.getBelPicDirectory().getCaCertificate().getFileData() == null) {
 				lookForSmartCard();
-				caCertificateBytes = readBinaryFile(selectCaCertificateCommand);
-			
+				mf.getBelPicDirectory().getCaCertificate().setFileData(readBinaryFile(selectCaCertificateCommand));
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new NoSuchFeature();
 		}
-		return caCertificateBytes;
+		return mf.getBelPicDirectory().getCaCertificate().getFileData();
 	}
 
 	public byte[] readIdentityFileSignatureBytes() throws NoSuchFeature {
 		try {
+			if (mf.getIDDirectory().getIdentityFileSignature().getFileData() == null) {
 				lookForSmartCard();
-				identityFileSignatureBytes = readBinaryFile(selectIdentityFileSignatureCommand);
-			
+				mf.getIDDirectory().getIdentityFileSignature().setFileData(readBinaryFile(selectIdentityFileSignatureCommand));
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new NoSuchFeature();
 		}
-		return identityFileSignatureBytes;
+		return mf.getIDDirectory().getIdentityFileSignature().getFileData();
+	}
+
+	public byte[] readAddressFileSignatureBytes() throws NoSuchFeature {
+		try {
+			if (mf.getIDDirectory().getAddressFileSignature().getFileData() == null) {
+				lookForSmartCard();
+				mf.getIDDirectory().getAddressFileSignature().setFileData(readBinaryFile(selectAddressFileSignatureCommand));
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new NoSuchFeature();
+		}
+		return mf.getIDDirectory().getAddressFileSignature().getFileData();
 	}
 
 	public byte[] readRRNCertificateBytes() throws NoSuchFeature {
 		try {
+			if (mf.getBelPicDirectory().getRrnCertificate().getFileData() == null) {
 				lookForSmartCard();
-				rrnCertificateBytes = readBinaryFile(selectRrnCertificateCommand);
-			
+				mf.getBelPicDirectory().getRrnCertificate().setFileData(readBinaryFile(selectRrnCertificateCommand));
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new NoSuchFeature();
 		}
-		return rrnCertificateBytes;
+		return mf.getBelPicDirectory().getRrnCertificate().getFileData();
 	}
 
-	public byte[] readRootCACertificateBytes() throws NoSuchFeature {
-		try{	
+	public byte[] readRootCACertificateBytes() throws UnknownCardException,
+			NoReadersAvailable, NoSuchFeature, SmartCardReaderException,
+			InvalidResponse, NoSuchAlgorithmException, CardException, AIDNotFound, NoCardConnected {
+		if (mf.getBelPicDirectory().getRootCaCertificate().getFileData() == null) {
 			lookForSmartCard();
-			rootCACertificateBytes = readBinaryFile(selectRootCaCertificateCommand);
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new NoSuchFeature();
+			mf.getBelPicDirectory().getRootCaCertificate().setFileData(readBinaryFile(selectRootCaCertificateCommand));
 		}
-		return rootCACertificateBytes;
+		return mf.getBelPicDirectory().getRootCaCertificate().getFileData();
 	}
 
-	public byte[] readCitizenIdentityDataBytes() throws NoSuchFeature {
-		try {
+	public byte[] readCitizenIdentityDataBytes() throws UnknownCardException,
+			NoReadersAvailable, NoSuchFeature, SmartCardReaderException,
+			InvalidResponse, NoSuchAlgorithmException, CardException, AIDNotFound, NoCardConnected {
+		if (mf.getIDDirectory().getIdentityFile().getFileData() == null) {
 			lookForSmartCard();
-			citizenIdentityFileBytes = readBinaryFile(selectCitizenIdentityDataCommand);
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new NoSuchFeature();
+			mf.getIDDirectory().getIdentityFile().setFileData(readBinaryFile(selectCitizenIdentityDataCommand));
 		}
-		return citizenIdentityFileBytes;
+		return mf.getIDDirectory().getIdentityFile().getFileData();
 	}
 
-	public byte[] readCitizenAddressBytes() throws NoSuchFeature {
-		try{
-			lookForSmartCard();
-			citizenAddressBytes = readBinaryFile(selectCitizenAddressDataCommand);
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new NoSuchFeature();
+	public byte[] readCitizenAddressBytes() throws UnknownCardException,
+			NoReadersAvailable, NoSuchFeature, SmartCardReaderException,
+			InvalidResponse, NoSuchAlgorithmException, CardException, AIDNotFound, NoCardConnected {
+		
+		if (mf.getIDDirectory().getAddressFile().getFileData() == null) {
+			mf.getIDDirectory().getAddressFile().setFileData(readBinaryFile(selectCitizenAddressDataCommand));
 		}
-		return citizenAddressBytes;
+		return mf.getIDDirectory().getAddressFile().getFileData();
 	}
 
-	public byte[] readCitizenPhotoBytes() throws NoSuchFeature {
-		try{
-			lookForSmartCard();
-			citizenPhoto = readBinaryFile(selectCitizenPhotoCommand);
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new NoSuchFeature();
+	public byte[] readCitizenPhotoBytes() throws NoReadersAvailable,
+			InvalidResponse, NoSuchAlgorithmException, CardException, AIDNotFound, NoCardConnected {
+		lookForSmartCard();
+		
+		if (mf.getIDDirectory().getPhotoFile().getFileData() == null) {
+			mf.getIDDirectory().getPhotoFile().setFileData(readBinaryFile(selectCitizenPhotoCommand));
 		}
-		return citizenPhoto;
-	}
-	
-	public byte[] readAddressFileSignatureBytes() throws NoSuchFeature {
-		try {
-			
-				lookForSmartCard();
-				addressFileSignatureBytes = readBinaryFile(selectAddressFileSignatureCommand);
-			
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new NoSuchFeature();
-		}
-		return addressFileSignatureBytes;
+		return mf.getIDDirectory().getPhotoFile().getFileData();
+		
 	}
 
 	
+/**
+ * All the following methods are used when reading out all the data from the card to build a full eid data xml file
+ * The data they contain are not really useful in the user interface/GUI
+ * @throws CardException 
+ * @throws NoCardConnected 
+ * @throws InvalidResponse 
+ */
 	
+	private byte[] readDirFile() throws InvalidResponse, NoCardConnected, CardException{
+		
+		return readBinaryFile(selectDirFileCommand);
+	}
 	
+	private byte[] readObjectDirectoryFile() throws InvalidResponse, NoCardConnected, CardException{
+		return readBinaryFile(selectObjectDirectoryFileCommand);
+	}
+
+	private byte[] readTokenInfo() throws InvalidResponse, NoCardConnected, CardException{
+		return readBinaryFile(selectTokenInfoCommand);
+	}
+	
+	private byte[] readAuthenticationObjectDirectoryFile() throws InvalidResponse, NoCardConnected, CardException{
+		return readBinaryFile(selectAuthenticationObjectDirectoryFileCommand);
+	}
+	
+	private byte[] readPrivateKeyDirectoryFile() throws InvalidResponse, NoCardConnected, CardException{
+		return readBinaryFile(selectPrivateKeyDirectoryFileCommand);
+	}
+	
+	private byte[] readCertificateDirectoryFile() throws InvalidResponse, NoCardConnected, CardException{
+		return readBinaryFile(selectCertificateDirectoryFileCommand);
+	}
+	
+	private byte[] readCaRoleIDFile() throws InvalidResponse, NoCardConnected, CardException{
+		return readBinaryFile(selectCaRoleIDFileCommand);
+	}
+	
+	private byte[] readPreferencesFile() throws InvalidResponse, NoCardConnected, CardException{
+		return readBinaryFile(selectPreferencesFileCommand);
+	}
+	
+	/**
+	 * This method will read data out of the current connected card and put it in a new xml file
+	 * The name of the file and the path where to store it should be given as parameter
+	 * @throws AIDNotFound 
+	 * @throws CardException 
+	 * @throws NoReadersAvailable 
+	 * @throws NoSuchAlgorithmException 
+	 * @throws NoSuchFeature 
+	 * @throws NoCardConnected 
+	 * @throws InvalidResponse 
+	 * @throws SmartCardReaderException 
+	 * @throws UnknownCardException 
+	 * @throws IOException 
+	 * @throws JAXBException 
+	 */
+	public void eIDToLibrary(String path) throws NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, NoSuchFeature, UnknownCardException, SmartCardReaderException, InvalidResponse, NoCardConnected, JAXBException, IOException{
+		
+		
+		lookForSmartCard();
+				
+		//Call all read methods and put all results in xml masterfile
+		//As either all data will come from an existing card or will be set using the set methods, 
+		//and in these set methods dependencies over different files are checked upon, we do not need to do this anymore here.
+		
+		mf.getDirFile().setFileData(readDirFile());
+		
+		mf.getBelPicDirectory().getObjectDirectoryFile().setFileData(this.readObjectDirectoryFile());
+		mf.getBelPicDirectory().getTokenInfo().setFileData(this.readTokenInfo());
+		mf.getBelPicDirectory().getAuthenticationObjectDirectoryFile().setFileData(this.readAuthenticationObjectDirectoryFile());
+		mf.getBelPicDirectory().getPrivateKeyDirectoryFile().setFileData(this.readPrivateKeyDirectoryFile());
+		mf.getBelPicDirectory().getCertificateDirectoryFile().setFileData(this.readCertificateDirectoryFile());
+		mf.getBelPicDirectory().getAuthenticationCertificate().setFileData(this.readAuthCertificateBytes());
+		mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(this.readNonRepCertificateBytes());
+		mf.getBelPicDirectory().getCaCertificate().setFileData(this.readCACertificateBytes());
+		mf.getBelPicDirectory().getRootCaCertificate().setFileData(this.readRootCACertificateBytes());
+		mf.getBelPicDirectory().getRrnCertificate().setFileData(this.readRRNCertificateBytes());
+		
+		mf.getIDDirectory().getIdentityFile().setFileData(this.readCitizenIdentityDataBytes());
+		mf.getIDDirectory().getIdentityFileSignature().setFileData(this.readIdentityFileSignatureBytes());
+		mf.getIDDirectory().getAddressFile().setFileData(this.readCitizenAddressBytes());
+		mf.getIDDirectory().getAddressFileSignature().setFileData(this.readAddressFileSignatureBytes());
+		mf.getIDDirectory().getPhotoFile().setFileData(this.readCitizenPhotoBytes());
+		mf.getIDDirectory().getCaRoleIDFile().setFileData(this.readCaRoleIDFile());
+		mf.getIDDirectory().getPreferencesFile().setFileData(this.readPreferencesFile());
+		
+		
+		
+		writeDocument(mf, path);
+	
+	}
+	
+	/**
+	 * This method will load the xml file given in path into the master file of this class
+	 * 
+	 * @param path
+	 * @throws JAXBException
+	 * @throws IOException
+	 */
+	public void libraryToEid(String path) throws JAXBException, IOException{
+		mf = readDocument(path);
+	}
+	
+	/**
+	 * Write a Masterfile to an xml document
+	 * @param masterf
+	 * @param pathname
+	 * @throws JAXBException
+	 * @throws IOException
+	 */
+	public void writeDocument( MasterFile masterf, String pathname )
+    		throws JAXBException, IOException {
+
+	    JAXBContext context =
+	        JAXBContext.newInstance( masterf.getClass().getPackage().getName() );
+	    Marshaller m = context.createMarshaller();
+	    m.setProperty( Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE );
+	    m.marshal( masterf, new FileOutputStream( pathname ) );
+	}
+	
+	/**
+	 * Load a Masterfile using a .xml pathname
+	 * @param pathname
+	 * @return
+	 * @throws JAXBException
+	 * @throws IOException
+	 */
+	public MasterFile readDocument(String pathname )
+		throws JAXBException, IOException {
+
+		JAXBContext context =
+			JAXBContext.newInstance( MasterFile.class.getPackage().getName() );
+		Unmarshaller u = context.createUnmarshaller();
+		return (MasterFile)u.unmarshal( new File( pathname ) );
+	}
+	
+
+
+
+
 	
 	public byte[] generateSignature(byte[] preparationCommand,
 			byte[] signatureGenerationCommand, byte[] datahash)
@@ -402,121 +591,80 @@ public class EidCard extends SmartCard implements EidCardInterface,
 				generateSignatureCommand, datahash);
 	}
 
-	private byte[] citizenPhoto = null;
-
-	private byte[] citizenAddressBytes = null;
-
-	private byte[] rootCACertificateBytes = null;
-
-	private byte[] citizenIdentityFileBytes = null;
-
-	private byte[] authenticationCertificateBytes = null;
-
-	private byte[] nonRepudiationCertificateBytes = null;
-
-	private byte[] caCertificateBytes = null;
-
-	private byte[] rrnCertificateBytes = null;
-
 	
-	public byte[] getCitizenPhoto() {
-		return citizenPhoto;
-	}
 
-	public byte[] getCitizenAddressBytes() {
-		return citizenAddressBytes;
-	}
-
-	public byte[] getRootCACertificateBytes() {
-		return rootCACertificateBytes;
-	}
-
-	public byte[] getCitizenIdentityFileBytes() {
-		return citizenIdentityFileBytes;
-	}
-
-	public byte[] getAuthenticationCertificateBytes() {
-		return authenticationCertificateBytes;
-	}
-
-	public byte[] getNonRepudiationCertificateBytes() {
-		return nonRepudiationCertificateBytes;
-	}
-
-	public byte[] getCaCertificateBytes() {
-		return caCertificateBytes;
-	}
-
-	public byte[] getRrnCertificateBytes() {
-		return rrnCertificateBytes;
-	}
-
-	public byte[] getAddressFileSignatureBytes() {
-		return addressFileSignatureBytes;
-	}
-
+/**
+ * The following methods are used to enable the user to change fields in this masterfile
+ * Dependencies in between fields should be checked upon here (also non modifiable fields)
+ * 
+ * @param rootCACertificateBytes
+ */
 	
-	
+	// As in the modifiable files, the changes are kept in this object, these will also be stored in the xml file
+	//WARNING: the not modifiable files having dependencies with the modifiable ones should be changed here accordingly
+	//TODO check for dependencies
+	doen
 	
 	public void setRootCACertificateBytes(byte[] rootCACertificateBytes) {
-		this.rootCACertificateBytes = rootCACertificateBytes;
+		mf.getBelPicDirectory().getRootCaCertificate().setFileData(rootCACertificateBytes);
 	}
 
 	public void setAuthenticationCertificateBytes(
 			byte[] authenticationCertificateBytes) {
-		this.authenticationCertificateBytes = authenticationCertificateBytes;
+		mf.getBelPicDirectory().getAuthenticationCertificate().setFileData(authenticationCertificateBytes);
 	}
 
 	public void setNonRepudiationCertificateBytes(
 			byte[] nonRepudiationCertificateBytes) {
-		this.nonRepudiationCertificateBytes = nonRepudiationCertificateBytes;
+		mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(nonRepudiationCertificateBytes);
 	}
 
 	public void setCaCertificateBytes(byte[] caCertificateBytes) {
-		this.caCertificateBytes = caCertificateBytes;
+		mf.getBelPicDirectory().getCaCertificate().setFileData(caCertificateBytes);
 	}
 
 	public void setRrnCertificateBytes(byte[] rrnCertificateBytes) {
-		this.rrnCertificateBytes = rrnCertificateBytes;
+		mf.getBelPicDirectory().getRrnCertificate().setFileData(rrnCertificateBytes);
 	}
 
 	public void setCitizenPhoto(byte[] citizenPhoto) {
-		this.citizenPhoto = citizenPhoto;
+		
+		//TODO: hier ook de hash in ID field veranderen
+		
+		
+		mf.getIDDirectory().getPhotoFile().setFileData(citizenPhoto);
 	}
 
 	public void setCitizenIdentityFileBytes(byte[] citizenIdentityFileBytes) {
-		this.citizenIdentityFileBytes = citizenIdentityFileBytes;
+		mf.getIDDirectory().getIdentityFile().setFileData(citizenIdentityFileBytes);
 	}
 
 	public void setCitizenAddressBytes(byte[] citizenAddressBytes) {
-		this.citizenAddressBytes = citizenAddressBytes;
+		mf.getIDDirectory().getAddressFile().setFileData(citizenAddressBytes);
 	}
 
-	
+	public void setIdentityFileSignatureBytes(byte[] identityFileSignatureBytes) {
+		mf.getIDDirectory().getIdentityFileSignature().setFileData(identityFileSignatureBytes);
+	}
+
 	
 	public void setAddressFileSignatureBytes(byte[] addressFileSignatureBytes) {
-		this.addressFileSignatureBytes = addressFileSignatureBytes;
+		mf.getIDDirectory().getAddressFileSignature().setFileData(addressFileSignatureBytes);
 	}
 
 	
 	
-
-	private byte[] identityFileSignatureBytes = null;
-
-
-	private byte[] addressFileSignatureBytes = null;
-
 	public void clearCache() {
-		citizenPhoto = null;
-		citizenAddressBytes = null;
-		rootCACertificateBytes = null;
-		citizenIdentityFileBytes = null;
-		authenticationCertificateBytes = null;
-		nonRepudiationCertificateBytes = null;
-		caCertificateBytes = null;
-		rrnCertificateBytes = null;
-		identityFileSignatureBytes = null;
-		addressFileSignatureBytes = null;
+		mf.getIDDirectory().getPhotoFile().setFileData(null);
+		mf.getIDDirectory().getAddressFile().setFileData(null);
+		mf.getBelPicDirectory().getRootCaCertificate().setFileData(null);
+		mf.getIDDirectory().getIdentityFile().setFileData(null);
+		mf.getBelPicDirectory().getAuthenticationCertificate().setFileData(null);
+		mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(null);
+		mf.getBelPicDirectory().getCaCertificate().setFileData(null);
+		mf.getBelPicDirectory().getRrnCertificate().setFileData(null);
+		mf.getIDDirectory().getIdentityFileSignature().setFileData(null);
+		mf.getIDDirectory().getAddressFileSignature().setFileData(null);
 		
 		
 //		authenticationCertificate = null;
@@ -765,52 +913,77 @@ public class EidCard extends SmartCard implements EidCardInterface,
 	}
 
 	
-
+/**
+ * The write methods are used in the writeEid method to write the local master file to the card
+ * 
+ * 
+ * @param caCertificate
+ * @return
+ * @throws NoSuchFeature
+ * @throws NoSuchAlgorithmException
+ * @throws NoReadersAvailable
+ * @throws CardException
+ * @throws AIDNotFound
+ * @throws InvalidResponse
+ * @throws NoCardConnected
+ * @throws GeneralSecurityException
+ */
 	
-	public byte[] writeCACertificateBytes(byte[] caCertificate) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+	private byte[] writeCACertificateBytes(byte[] caCertificate) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
 		lookForSmartCard();
 		return writeBinaryFile(selectCaCertificateCommand, caCertificate);
 	}
 	
-	public byte[] writeIdentityFileSignatureBytes(byte[] identityFileSignature) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+	private byte[] writeIdentityFileSignatureBytes(byte[] identityFileSignature) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
 		lookForSmartCard();
 		return writeBinaryFile(selectIdentityFileSignatureCommand, identityFileSignature);
 	}
 
-	public byte[] writeAddressFileSignatureBytes(byte[] addressFileSignature) throws NoSuchFeature, InvalidResponse, NoCardConnected, CardException, GeneralSecurityException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound {
+	private byte[] writeAddressFileSignatureBytes(byte[] addressFileSignature) throws NoSuchFeature, InvalidResponse, NoCardConnected, CardException, GeneralSecurityException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound {
 		lookForSmartCard();
 		return writeBinaryFile(selectAddressFileSignatureCommand, addressFileSignature);
 	}
 
-	public byte[] writeRRNCertificateBytes(byte[] rrnCertificate) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+	private byte[] writeRRNCertificateBytes(byte[] rrnCertificate) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
 		lookForSmartCard();
 		return writeBinaryFile(selectRrnCertificateCommand, rrnCertificate);
 	}
 	
-	public byte[] writeRootCACertificateBytes(byte[] rootCACertificate) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+	private byte[] writeRootCACertificateBytes(byte[] rootCACertificate) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
 		lookForSmartCard();
 		return writeBinaryFile(selectRootCaCertificateCommand, rootCACertificate);
 	}
 
-	public byte[] writeCitizenIdentityDataBytes(byte[] citizenIdentityFile) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+	private byte[] writeCitizenIdentityDataBytes(byte[] citizenIdentityFile) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
 		lookForSmartCard();
 		return writeBinaryFile(selectCitizenIdentityDataCommand, citizenIdentityFile);
 	}
 
-	public byte[] writeCitizenAddressBytes(byte[] citizenAddress) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+	private byte[] writeCitizenAddressBytes(byte[] citizenAddress) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
 		lookForSmartCard();
 		return writeBinaryFile(selectCitizenAddressDataCommand, citizenAddress);
 	}
 
-	public byte[] writeCitizenPhotoBytes(byte[] citizenPhoto) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+	private byte[] writeCitizenPhotoBytes(byte[] citizenPhoto) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
 		lookForSmartCard();
-		
-		//TODO: hier eerst de hash in ID field veranderen
 		
 		return writeBinaryFile(selectCitizenPhotoCommand, citizenPhoto);
 	}
 	
-	
+	/**
+	 * This method writes the current master file to the connected eid
+	 * 
+	 * @throws AIDNotFound 
+	 * @throws CardException 
+	 * @throws NoReadersAvailable 
+	 * @throws NoSuchAlgorithmException 
+	 */
+	public void writeEid() throws NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound{
+		lookForSmartCard();
+		
+		//TODO write all data
+		write
+	}
 	
 	
 	

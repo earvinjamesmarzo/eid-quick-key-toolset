@@ -32,6 +32,8 @@ public class SmartCard implements SmartCardCommandsInterface {
 		byte[] certificate = new byte[10000];
 
 		byte[] keyBytes = myReader.sendCommand(selectFileCommand);
+		
+		
 		while (enough < 0) {
 			readBinaryBlockCommand[2] = (byte) (len / wordLength / 256);
 			readBinaryBlockCommand[3] = (byte) (len / wordLength % 256);
@@ -75,6 +77,8 @@ public class SmartCard implements SmartCardCommandsInterface {
 				}
 			}
 		}
+		
+		
 		len = MathUtils.unsignedInt(len);
 		//System.out.println("Total length of response data: " + len);
 		

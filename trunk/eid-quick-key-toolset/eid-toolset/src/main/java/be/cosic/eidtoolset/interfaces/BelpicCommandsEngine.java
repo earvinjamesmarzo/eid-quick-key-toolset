@@ -150,6 +150,40 @@ public interface BelpicCommandsEngine extends EidCardCommandsInterface {
 			(byte) 0x00, (byte) 0xA4, (byte) 0x08, (byte) 0x0C, (byte) 0x06,
 			(byte) 0x3F, (byte) 0x00, (byte) 0xDF, (byte) 0x01, (byte) 0x40,
 			(byte) 0x34 };
+	
+	public final static byte[] selectDirFileCommand = {
+			(byte) 0x00, (byte) 0xA4, (byte) 0x08, (byte) 0x0C, (byte) 0x04,
+			(byte) 0x3F, (byte) 0x00, (byte) 0x2F, (byte) 0x00};
+	
+	public final static byte[] selectObjectDirectoryFileCommand = {
+		(byte) 0x00, (byte) 0xA4, (byte) 0x08, (byte) 0x0C, (byte) 0x06,
+		(byte) 0x3F, (byte) 0x00, (byte) 0xDF, (byte) 0x00, (byte) 0x50, (byte) 0x31};
+
+	public final static byte[] selectTokenInfoCommand = {
+		(byte) 0x00, (byte) 0xA4, (byte) 0x08, (byte) 0x0C, (byte) 0x06,
+		(byte) 0x3F, (byte) 0x00, (byte) 0xDF, (byte) 0x00, (byte) 0x50, (byte) 0x32};
+
+	public final static byte[] selectAuthenticationObjectDirectoryFileCommand = {
+		(byte) 0x00, (byte) 0xA4, (byte) 0x08, (byte) 0x0C, (byte) 0x06,
+		(byte) 0x3F, (byte) 0x00, (byte) 0xDF, (byte) 0x00, (byte) 0x50, (byte) 0x34};
+
+	public final static byte[] selectPrivateKeyDirectoryFileCommand = {
+		(byte) 0x00, (byte) 0xA4, (byte) 0x08, (byte) 0x0C, (byte) 0x06,
+		(byte) 0x3F, (byte) 0x00, (byte) 0xDF, (byte) 0x00, (byte) 0x50, (byte) 0x35};
+
+	public final static byte[] selectCertificateDirectoryFileCommand = {
+		(byte) 0x00, (byte) 0xA4, (byte) 0x08, (byte) 0x0C, (byte) 0x06,
+		(byte) 0x3F, (byte) 0x00, (byte) 0xDF, (byte) 0x00, (byte) 0x50, (byte) 0x37};
+
+	public final static byte[] selectCaRoleIDFileCommand = {
+		(byte) 0x00, (byte) 0xA4, (byte) 0x08, (byte) 0x0C, (byte) 0x06,
+		(byte) 0x3F, (byte) 0x00, (byte) 0xDF, (byte) 0x01, (byte) 0x40, (byte) 0x38};
+
+	public final static byte[] selectPreferencesFileCommand = {
+		(byte) 0x00, (byte) 0xA4, (byte) 0x08, (byte) 0x0C, (byte) 0x06,
+		(byte) 0x3F, (byte) 0x00, (byte) 0xDF, (byte) 0x01, (byte) 0x40, (byte) 0x39};
+
+	
 
 	public final static byte[] readBinaryBlockCommand = { (byte) 0x00,
 			(byte) 0xB0, (byte) 0x00, (byte) 0x00, (byte) 0x00 };

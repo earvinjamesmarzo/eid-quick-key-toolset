@@ -21,6 +21,7 @@ import javax.imageio.stream.ImageInputStream;
 import javax.smartcardio.*;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
+import javax.xml.bind.DatatypeConverter;
 
 
 import be.cosic.eidtoolset.gui.*;
@@ -55,11 +56,31 @@ public class Engine extends Component{
 	        	
 	        	BelpicCard belpicCard = null;
 	    		
-	    			belpicCard = new BelpicCard("eidTool");
+	    		belpicCard = new BelpicCard("eidTool");
 	    			
-	    			byte[] id = belpicCard.readCitizenIdentityDataBytes();
+	    			//byte[] id = belpicCard.readCitizenIdentityDataBytes();
 	    			
+	    		String path = "C:\\test.xml";
 	    			
+	    		//belpicCard.eIDToLibrary(path);
+	    		
+	    		MasterFile mf = belpicCard.readDocument(path);
+	    		
+	    		System.out.println("mfid: " + DatatypeConverter.printBase64Binary(mf.getFileID()));
+	            
+	    		
+	    		
+	    		byte[] ad = mf.getIDDirectory().getAddressFile().getFileData();
+	    		
+	    		
+    			
+	    		Hashtable table = new Hashtable();
+	            
+	            IdentityDataParser.ParseIdentityAddressData(ad,table);
+	            
+	            System.out.println("data of cardholder in array: " + TextUtils.hexDump(ad));
+	            System.out.println("datalength: " + ad.length);
+	            System.out.println("parsed data of the cardholder: " + table.toString());
 	    		
 	    			
 	    		//byte[] atr = belpicCard.getATR();
