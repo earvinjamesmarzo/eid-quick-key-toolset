@@ -1319,6 +1319,8 @@ public class EidCard extends javacard.framework.Applet {
 		if (mode == READ_BINARY)
 			return true;
 
+		
+		//TODO: do as below for all possible authentications/access conditions
 		// allow write access to the preference file if the cardholder pin was entered correctly
 		if ((selectedFile == preferencesFile) && cardholderPin.isValidated())
 			return true;

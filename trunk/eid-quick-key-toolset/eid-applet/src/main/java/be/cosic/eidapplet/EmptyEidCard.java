@@ -4,7 +4,7 @@ package be.cosic.eidapplet;
 import javacard.framework.*;
 import javacard.security.*;
 
-public class SampleEidCard extends EidCard {
+public class EmptyEidCard extends EidCard {
 
 	// these are identical for all eid card applet so share these between subclasses
 	static byte[] dirData, tokenInfoData, odfData, aodfData, prkdfData, cdfData;
@@ -18,7 +18,7 @@ public class SampleEidCard extends EidCard {
 	public static void install(byte[] bArray, short bOffset, byte bLength) {
 
 		// create a sample eID card applet instance
-		new SampleEidCard();
+		new EmptyEidCard();
 
 	}
 
@@ -28,7 +28,7 @@ public class SampleEidCard extends EidCard {
 	 * 
 	 * needs to be protected so that it can be invoked by subclasses
 	 */
-	protected SampleEidCard() {
+	protected EmptyEidCard() {
 
 		super();
 
@@ -128,9 +128,13 @@ public class SampleEidCard extends EidCard {
 	}
 
 	/**
-	 * initialize all files on the card
+	 * initialize all files on the card as empty with max size
 	 * 
 	 * see "Belgian Electronic Identity Card content" (version 2.2)
+	 * 
+	 * TODO: check all max lengths and fix if necessary
+	 * 
+	 * e.g. //TODO: depending on the edi card version, the address is of different length (current: 117)
 	 */
 	private void initializeFileSystem() {
 
@@ -141,12 +145,12 @@ public class SampleEidCard extends EidCard {
 		 * see "5. PKCS#15 information details" for more info
 		 */
 
-		if (SampleEidCard.dirData == null)
-			SampleEidCard.dirData = new byte[] {
-			/* Belpic (One entry per application) */
+		/*if (EmptyEidCard.dirData == null)
+			EmptyEidCard.dirData = new byte[] {
+			 Belpic (One entry per application) 
 			// [APPLICATION 1] IMPLICIT SEQUENCE
 			 (byte)0x61, (byte)0x23,
-			/* Application ID */
+			 Application ID 
 			// [APPLICATION 15] IMPLICIT OCTET STRING
 			 (byte)0x4F, (byte)0x0C,
 			// AID = RID || "PKCS-15"
@@ -162,7 +166,7 @@ public class SampleEidCard extends EidCard {
 				(byte)0x2D,
 				(byte)0x31,
 				(byte)0x35,
-			/* Label */
+			 Label 
 			// [APPLICATION 16] IMPLICIT UTF8 STRING
 			 (byte)0x50, (byte)0x06,
 			// "BELPIC"
@@ -172,33 +176,33 @@ public class SampleEidCard extends EidCard {
 				(byte)0x50,
 				(byte)0x49,
 				(byte)0x43,
-			/* Path */
+			 Path 
 			// [APPLICATION 17] IMPLICIT OCTET STRING
 			 (byte)0x51, (byte)0x04,
 			// MF/Belpic
 			 (byte)0x3F, (byte)0x00, (byte)0xDF, (byte)0x00,
-			/* Discretionary Data Object */
+			 Discretionary Data Object 
 			// [APPLICATION 19] IMPLICIT SEQUENCE
 			 (byte)0x73, (byte)0x05,
-			/* Object ID */
+			 Object ID 
 			// oject identifier
 			 (byte)0x06, (byte)0x03,
 			// belgian citizen (2.16.56.2)
-			 (byte)0x60, (byte)0x38, (byte)0x02 };
-		dirFile = new ElementaryFile(EF_DIR, masterFile, SampleEidCard.dirData);
+			 (byte)0x60, (byte)0x38, (byte)0x02 };*/
+		dirFile = new ElementaryFile(EF_DIR, masterFile, (short)0x25);
 
 		belpicDirectory = new DedicatedFile(DF_BELPIC, masterFile);
 
-		if (SampleEidCard.tokenInfoData == null)
-			SampleEidCard.tokenInfoData = new byte[] {
+		/*if (EmptyEidCard.tokenInfoData == null)
+			EmptyEidCard.tokenInfoData = new byte[] {
 			// SEQUENCE
 			 (byte)0x30, (byte)0x27,
-			/* Version */
+			 Version 
 			// INTEGER
 			 (byte)0x02, (byte)0x01,
 			// "0"
 			 (byte)0x00,
-			/* Serial Number */
+			 Serial Number 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x10,
 			// chip serial number (16 bytes)
@@ -218,8 +222,8 @@ public class SampleEidCard extends EidCard {
 				(byte)0x12,
 				(byte)0x12,
 				(byte)0x26,
-			/* Application Label */
-			/* [0] Label */
+			 Application Label 
+			 [0] Label 
 			// IMPLICIT UTF8 String
 			 (byte)0x80, (byte)0x06,
 			// "BELPIC"
@@ -229,30 +233,30 @@ public class SampleEidCard extends EidCard {
 				(byte)0x50,
 				(byte)0x49,
 				(byte)0x43,
-			/* Token Flags */
+			 Token Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x02,
 			// prnGeneration(2), eidCompliant (3)
 			 (byte)0x04, (byte)0x30,
-			/* [30] BELPIC Application */
+			 [30] BELPIC Application 
 			// IMPLICIT INTEGER
 			 (byte)0x9E, (byte)0x04,
 			// version (4 bytes)
 			// also see "Description of the Belpic EID-version numbering"
-			 (byte)0x01, (byte)0x01, (byte)0x00, (byte)0x00 };
+			 (byte)0x01, (byte)0x01, (byte)0x00, (byte)0x00 };*/
 		tokenInfo =
 			new ElementaryFile(
 				TOKENINFO,
 				belpicDirectory,
-				SampleEidCard.tokenInfoData);
+				(short)0x30);
 
-		if (SampleEidCard.odfData == null)
-			SampleEidCard.odfData = new byte[] {
-			/*
+		/*if (EmptyEidCard.odfData == null)
+			EmptyEidCard.odfData = new byte[] {
+			
 			 * [0] Private Keys 
-			 */
+			 
 			 (byte)0xA0, (byte)0x0A,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x08,
 			// OCTECT STRING
@@ -264,11 +268,11 @@ public class SampleEidCard extends EidCard {
 				(byte)0x00,
 				(byte)0x50,
 				(byte)0x35,
-			/*
+			
 			 * [4] Certificates 
-			 */
+			 
 			 (byte)0xA4, (byte)0x0A,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x08,
 			// OCTECT STRING
@@ -280,11 +284,11 @@ public class SampleEidCard extends EidCard {
 				(byte)0x00,
 				(byte)0x50,
 				(byte)0x37,
-			/* 
+			 
 			 * [8] Authentication Objects
-			 */
+			 
 			 (byte)0xA8, (byte)0x0A,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x08,
 			// OCTECT STRING
@@ -295,21 +299,21 @@ public class SampleEidCard extends EidCard {
 				(byte)0xDF,
 				(byte)0x00,
 				(byte)0x50,
-				(byte)0x34 };
+				(byte)0x34 };*/
 		objectDirectoryFile =
-			new ElementaryFile(ODF, belpicDirectory, SampleEidCard.odfData);
+			new ElementaryFile(ODF, belpicDirectory, (short)40);
 
-		if (SampleEidCard.aodfData == null)
-			SampleEidCard.aodfData = new byte[] {
-			/* 
+		/*if (EmptyEidCard.aodfData == null)
+			EmptyEidCard.aodfData = new byte[] {
+			 
 			 * PIN Cardholder (One entry per PIN)
-			 */
+			 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x33,
-			/* Common Object Attributes */
+			 Common Object Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x0F,
-			/* Label */
+			 Label 
 			// UTF8 STRING
 			 (byte)0x0C, (byte)0x09,
 			// "Basic PIN"
@@ -322,74 +326,74 @@ public class SampleEidCard extends EidCard {
 				(byte)0x50,
 				(byte)0x49,
 				(byte)0x4E,
-			/* Common Object Flags */
+			 Common Object Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x02,
 			// private(0), modifiable (1)
 			 (byte)0x06, (byte)0xC0,
-			/* Common Authentication Object Attributes */
+			 Common Authentication Object Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x03,
-			/* Authority ID */
+			 Authority ID 
 			// OCTECT STRING
 			 (byte)0x04, (byte)0x01,
 			// "01"
 			 (byte)0x01,
-			/* [1] Pin Attributes */
+			 [1] Pin Attributes 
 			 (byte)0xA1, (byte)0x1B,
 			// SEQUENCE
 			 (byte)0x30, (byte)0x19,
-			/* Pin Flags */
+			 Pin Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x02,
 			// initialized(4), needs-padding(5)
 			 (byte)0x02, (byte)0x0C,
-			/* Pin Type */
+			 Pin Type 
 			// ENUMERATED
 			 (byte)0x0A, (byte)0x01,
 			// bcd(0)
 			 (byte)0x00,
-			/* Min Length */
+			 Min Length 
 			// INTEGER
 			 (byte)0x02, (byte)0x01,
 			// "4"
 			 (byte)0x04,
-			/* Stored Length */
+			 Stored Length 
 			// INTEGER
 			 (byte)0x02, (byte)0x01,
 			// "8"
 			 (byte)0x08,
-			/* [0] Pin Reference */
+			 [0] Pin Reference 
 			// IMPLICIT INTEGER
 			 (byte)0x80, (byte)0x01,
 			// "1"
 			 (byte)0x01,
-			/* Pad Char */
+			 Pad Char 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "FF"
 			 (byte)0xFF,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x04,
 			// OCTET STRING
 			 (byte)0x04, (byte)0x02,
 			// MF
-			 (byte)0x3F, (byte)0x00 };
+			 (byte)0x3F, (byte)0x00 };*/
 		authenticationObjectDirectoryFile =
-			new ElementaryFile(AODF, belpicDirectory, SampleEidCard.aodfData);
+			new ElementaryFile(AODF, belpicDirectory, (short)0x40);
 
-		if (SampleEidCard.prkdfData == null)
-			SampleEidCard.prkdfData = new byte[] {
-			/*
+		/*if (EmptyEidCard.prkdfData == null)
+			EmptyEidCard.prkdfData = new byte[] {
+			
 			 *  Private Authentication Key 
-			 */
+			 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x3A,
-			/* Common Object Attributes */
+			 Common Object Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x17,
-			/* Label */
+			 Label 
 			// UTF8 STRING
 			 (byte)0x0C, (byte)0x0E,
 			// "Authentication"
@@ -407,64 +411,64 @@ public class SampleEidCard extends EidCard {
 				(byte)0x69,
 				(byte)0x6F,
 				(byte)0x6E,
-			/* Common Object Flags */
+			 Common Object Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x02,
 			// private(0), modifiable(1)
 			 (byte)0x06, (byte)0xC0,
-			/* Authority ID */
+			 Authority ID 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "01"
 			 (byte)0x01,
-			/* Common Key Attributes */
+			 Common Key Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x0F,
-			/* Identifier */
+			 Identifier 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "02"
 			 (byte)0x02,
-			/* Key Usage Flags */
+			 Key Usage Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x02,
 			// Sign(2)
 			 (byte)0x05, (byte)0x20,
-			/* Key Access Flags */
+			 Key Access Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x02,
 			// sensitive(0), always sensitive(2), never extractable(3), local(4)
 			 (byte)0x03, (byte)0xB8,
-			/* Key Reference */
+			 Key Reference 
 			// INTEGER
 			 (byte)0x02, (byte)0x02,
 			// "82"
 			 (byte)0x00, (byte)0x82,
-			/* [1] Private RSA Key Attributes */
+			 [1] Private RSA Key Attributes 
 			 (byte)0xA1, (byte)0x0E,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x0C,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x06,
 			// OCTET STRING
 			 (byte)0x04, (byte)0x04,
 			// MF/Belpic
 			 (byte)0x3F, (byte)0x00, (byte)0xDF, (byte)0x00,
-			/* Modulus Length */
+			 Modulus Length 
 			 (byte)0x02, (byte)0x02,
 			// "1024"
 			 (byte)0x04, (byte)0x00,
-			/* 
+			 
 			 * Private Non-repudiation Key
-			 */
+			 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x39,
-			/* Common Object Attributes */
+			 Common Object Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x15,
-			/* Label */
+			 Label 
 			// UTF8 STRING
 			 (byte)0x0C, (byte)0x09,
 			// "Signature"
@@ -477,75 +481,75 @@ public class SampleEidCard extends EidCard {
 				(byte)0x75,
 				(byte)0x72,
 				(byte)0x65,
-			/* Common Object Flags */
+			 Common Object Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x02,
 			// private(0), modifiable(1)
 			 (byte)0x06, (byte)0xC0,
-			/* Authority ID */
+			 Authority ID 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "01"
 			 (byte)0x01,
-			/* User Consent */
+			 User Consent 
 			// INTEGER
 			 (byte)0x02, (byte)0x01,
 			// "1"
 			 (byte)0x01,
-			/* Common Key Attributes */
+			 Common Key Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x10,
-			/* Identifier */
+			 Identifier 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "03"
 			 (byte)0x03,
-			/* Key Usage Flags */
+			 Key Usage Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x03,
 			// NonRepudiation(9)
 			 (byte)0x06, (byte)0x00, (byte)0x40,
-			/* Key Access Flags */
+			 Key Access Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x02,
 			// sensitive(0), always sensitive(2), never extractable(3), local(4)
 			 (byte)0x03, (byte)0xB8,
-			/* Key Reference */
+			 Key Reference 
 			// INTEGER
 			 (byte)0x02, (byte)0x02,
 			// "83"
 			 (byte)0x00, (byte)0x83,
-			/* [1] Private RSA Key Attributes */
+			 [1] Private RSA Key Attributes 
 			 (byte)0xA1, (byte)0x0E,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x0C,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x06,
 			// OCTET STRING
 			 (byte)0x04, (byte)0x04,
 			// MF/Belpic
 			 (byte)0x3F, (byte)0x00, (byte)0xDF, (byte)0x00,
-			/* Modulus Length */
+			 Modulus Length 
 			// INTEGER
 			 (byte)0x02, (byte)0x02,
 			// "1024"
-			 (byte)0x04, (byte)0x00 };
+			 (byte)0x04, (byte)0x00 };*/
 		privateKeyDirectoryFile =
-			new ElementaryFile(PRKDF, belpicDirectory, SampleEidCard.prkdfData);
+			new ElementaryFile(PRKDF, belpicDirectory, (short)0xB0);
 
-		if (SampleEidCard.cdfData == null)
-			SampleEidCard.cdfData = new byte[] {
-			/*
+		/*if (EmptyEidCard.cdfData == null)
+			EmptyEidCard.cdfData = new byte[] {
+			
 			 * Authentation Certificate
-			 */
+			 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x2C,
-			/* Common Object Attributes */
+			 Common Object Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x17,
-			/* Label */
+			 Label 
 			// UTF8 STRING
 			 (byte)0x0C, (byte)0x0E,
 			// "Authentication"
@@ -563,38 +567,38 @@ public class SampleEidCard extends EidCard {
 				(byte)0x69,
 				(byte)0x6F,
 				(byte)0x6E,
-			/* Common Object Flags */
+			 Common Object Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x02,
 			// private(0), modifiable(1)
 			 (byte)0x06, (byte)0xC0,
-			/* Authority ID */
+			 Authority ID 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "01"
 			 (byte)0x01,
-			/* Common Certificate Attributes */
+			 Common Certificate Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x06,
-			/* Identifier */
+			 Identifier 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "02"
 			 (byte)0x02,
-			/* [3] Implicit Trust */
+			 [3] Implicit Trust 
 			// IMPLICIT BOOLEAN
 			 (byte)0x83, (byte)0x01,
 			// "false"
 			 (byte)0x00,
-			/* [1] X509CertificateAttributes */
+			 [1] X509CertificateAttributes 
 			 (byte)0xA1, (byte)0x0C,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x0A,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x08,
-			/* Path */
+			 Path 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x06,
 			// MF/Belpic/Cert#2(auth)
@@ -604,15 +608,15 @@ public class SampleEidCard extends EidCard {
 				(byte)0x00,
 				(byte)0x50,
 				(byte)0x38,
-			/* 
+			 
 			 * Non-Repudiation Certificate
-			 */
+			 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x27,
-			/* Common Object Attributes */
+			 Common Object Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x12,
-			/* Label */
+			 Label 
 			// UTF8 STRING
 			 (byte)0x0C, (byte)0x09,
 			// "Signature"
@@ -624,39 +628,39 @@ public class SampleEidCard extends EidCard {
 				(byte)0x74,
 				(byte)0x75,
 				(byte)0x72,
-				(byte)0x65,
-			/* Common Object Flags */
+				(byte)0x65,//64
+			 Common Object Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x02,
 			// private(0), modifiable(1)
 			 (byte)0x06, (byte)0xC0,
-			/* Authority ID */
+			 Authority ID 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "01"
 			 (byte)0x01,
-			/* Common Certificate Attributes */
+			 Common Certificate Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x06,
-			/* Identifier */
+			 Identifier 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "03"
 			 (byte)0x03,
-			/* [3] Implicit Trust */
+			 [3] Implicit Trust 
 			// IMPLICIT BOOLEAN
 			 (byte)0x83, (byte)0x01,
 			// "false"
 			 (byte)0x00,
-			/* [1] X509CertificateAttributes */
+			 [1] X509CertificateAttributes 
 			 (byte)0xA1, (byte)0x0C,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x0A,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x08,
-			/* Path */
+			 Path 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x06,
 			// MF/Belpic/Cert#3(non-rep)
@@ -666,56 +670,56 @@ public class SampleEidCard extends EidCard {
 				(byte)0x00,
 				(byte)0x50,
 				(byte)0x39,
-			/* 
+			 
 			 * Certification Authority Certificate
-			 */
+			 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x23,
-			/* Common Object Attributes */
+			 Common Object Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x0B,
-			/* Label */
+			 Label 
 			// UTF8 STRING
 			 (byte)0x0C, (byte)0x02,
 			// "CA"
-			 (byte)0x43, (byte)0x41,
-			/* Common Object Flags */
+			 (byte)0x43, (byte)0x41,//101
+			 Common Object Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x02,
 			// private(0), modifiable(1)
 			 (byte)0x06, (byte)0xC0,
-			/* Authority ID */
+			 Authority ID 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "01"
 			 (byte)0x01,
-			/* Common Certificate Attributes */
+			 Common Certificate Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x09,
-			/* Identifier */
+			 Identifier 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "04"
 			 (byte)0x04,
-			/* Authority */
+			 Authority 
 			// BOOLEAN
 			 (byte)0x01, (byte)0x01,
 			// "true"
 			 (byte)0xFF,
-			/* [3] Implicit Trust */
+			 [3] Implicit Trust 
 			// IMPLICIT BOOLEAN
 			 (byte)0x83, (byte)0x01,
 			// "false"
 			 (byte)0x00,
-			/* [1] X509CertificateAttributes */
+			 [1] X509CertificateAttributes 
 			 (byte)0xA1, (byte)0x0C,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x0A,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x08,
-			/* Path */
+			 Path 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x06,
 			// MF/Belpic/Cert#4(CA)
@@ -725,56 +729,56 @@ public class SampleEidCard extends EidCard {
 				(byte)0x00,
 				(byte)0x50,
 				(byte)0x3A,
-			/* 
+			 
 			 * Root Certificate
-			 */
+			 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x25,
-			/* Common Object Attributes */
+			 Common Object Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x0D,
-			/* Label */
+			 Label 
 			// UTF8 STRING
 			 (byte)0x0C, (byte)0x04,
 			// "Root"
 			 (byte)0x52, (byte)0x6F, (byte)0x6F, (byte)0x74,
-			/* Common Object Flags */
+			 Common Object Flags 
 			// BIT STRING
 			 (byte)0x03, (byte)0x02,
 			// private(0), modifiable(1)
 			 (byte)0x06, (byte)0xC0,
-			/* Authority ID */
+			 Authority ID 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "01"
 			 (byte)0x01,
-			/* Common Certificate Attributes */
+			 Common Certificate Attributes 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x09,
-			/* Identifier */
+			 Identifier 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x01,
 			// "06"
 			 (byte)0x06,
-			/* Authority */
+			 Authority 
 			// BOOLEAN
 			 (byte)0x01, (byte)0x01,
 			// "true"
 			 (byte)0xFF,
-			/* [3] Implicit Trust */
+			 [3] Implicit Trust 
 			// IMPLICIT BOOLEAN
-			 (byte)0x83, (byte)0x01,
+			 (byte)0x83, (byte)0x01,//160
 			// "false"
 			 (byte)0x00,
-			/* [1] X509CertificateAttributes */
+			 [1] X509CertificateAttributes 
 			 (byte)0xA1, (byte)0x0C,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x0A,
-			/* Path */
+			 Path 
 			// SEQUENCE
 			 (byte)0x30, (byte)0x08,
-			/* Path */
+			 Path 
 			// OCTET STRING
 			 (byte)0x04, (byte)0x06,
 			// MF/Belpic/Cert#6(Root)
@@ -783,9 +787,9 @@ public class SampleEidCard extends EidCard {
 				(byte)0xDF,
 				(byte)0x00,
 				(byte)0x50,
-				(byte)0x3B };
+				(byte)0x3B };*/
 		certificateDirectoryFile =
-			new ElementaryFile(CDF, belpicDirectory, SampleEidCard.cdfData);
+			new ElementaryFile(CDF, belpicDirectory, (short)0xB0);
 
 		idDirectory = new DedicatedFile(DF_ID, masterFile);
 
@@ -795,8 +799,8 @@ public class SampleEidCard extends EidCard {
 		 */
 
 		// initialize ID#RN EF
-		byte[] idData = {
-			/* Card Number */
+		/*byte[] idData = {
+			 Card Number 
 			 (byte)0x01, (byte)0x0C,
 			// "000-0000861-85"
 			(byte)0x30,
@@ -811,7 +815,7 @@ public class SampleEidCard extends EidCard {
 				(byte)0x31,
 				(byte)0x38,
 				(byte)0x35,
-			/* Chip Number */
+			 Chip Number 
 			 (byte)0x02, (byte)0x10,
 			// chip number (16 bytes)
 			(byte)0x53,
@@ -830,7 +834,7 @@ public class SampleEidCard extends EidCard {
 				(byte)0x12,
 				(byte)0x12,
 				(byte)0x26,
-			/* Card validity data begin */
+			 Card validity data begin 
 			 (byte)0x03, (byte)0x0A,
 			// "18.06.2004"
 			(byte)0x31,
@@ -843,7 +847,7 @@ public class SampleEidCard extends EidCard {
 				(byte)0x30,
 				(byte)0x30,
 				(byte)0x34,
-			/* Card validity data end */
+			 Card validity data end 
 			 (byte)0x04, (byte)0x0A,
 			// "18.06.2009"
 			(byte)0x31,
@@ -856,7 +860,7 @@ public class SampleEidCard extends EidCard {
 				(byte)0x30,
 				(byte)0x30,
 				(byte)0x39,
-			/* Card delivery municipality */
+			 Card delivery municipality 
 			 (byte)0x05, (byte)0x12,
 			// "Certipost Specimen" 
 			(byte)0x43,
@@ -877,7 +881,7 @@ public class SampleEidCard extends EidCard {
 				(byte)0x6D,
 				(byte)0x65,
 				(byte)0x6E,
-			/* Natianol Number */
+			 Natianol Number 
 			 (byte)0x06, (byte)0x0B,
 			// "71.71.51-000.70"
 			(byte)0x37,
@@ -891,7 +895,7 @@ public class SampleEidCard extends EidCard {
 				(byte)0x30,
 				(byte)0x37,
 				(byte)0x30,
-			/* Name */
+			 Name 
 			 (byte)0x07, (byte)0x08,
 			// "SPECIMEN"
 			(byte)0x53,
@@ -902,7 +906,7 @@ public class SampleEidCard extends EidCard {
 				(byte)0x4D,
 				(byte)0x45,
 				(byte)0x4E,
-			/* 2 first first names */
+			 2 first first names 
 			 (byte)0x08, (byte)0x0B,
 			// "Alice A0861"
 			(byte)0x41,
@@ -916,15 +920,15 @@ public class SampleEidCard extends EidCard {
 				(byte)0x38,
 				(byte)0x36,
 				(byte)0x31,
-			/* First letter of third first name */
+			 First letter of third first name 
 			 (byte)0x09, (byte)0x01,
 			// "A"
 			 (byte)0x41,
-			/* Nationality */
+			 Nationality 
 			 (byte)0x0A, (byte)0x04,
 			// "Belg"
 			 (byte)0x42, (byte)0x65, (byte)0x6C, (byte)0x67,
-			/* Birth Location */
+			 Birth Location 
 			 (byte)0x0B, (byte)0x0C,
 			// "Hamont-Achel"
 			(byte)0x48,
@@ -939,7 +943,7 @@ public class SampleEidCard extends EidCard {
 				(byte)0x68,
 				(byte)0x65,
 				(byte)0x6C,
-			/* Birth Date */
+			 Birth Date 
 			 (byte)0x0C, (byte)0x0B,
 			// "01 JAN 1971"
 			(byte)0x30,
@@ -953,21 +957,21 @@ public class SampleEidCard extends EidCard {
 				(byte)0x39,
 				(byte)0x37,
 				(byte)0x31,
-			/* Sex */
+			 Sex 
 			 (byte)0x0D, (byte)0x01,
 			// "V"
 			 (byte)0x56,
-			/* Noble condition */
+			 Noble condition 
 			 (byte)0x0E, (byte)0x00,
-			/* Document type */
+			 Document type 
 			 (byte)0x0F, (byte)0x01,
 			// "1" (Belgian citizen)
 			 (byte)0x31,
-			/* Special status */
+			 Special status 
 			 (byte)0x10, (byte)0x01,
 			// "0" (no status)
 			 (byte)0x30,
-			/* Hash photo */
+			 Hash photo 
 			 (byte)0x11, (byte)0x14,
 			// SHA-1 hash (20 bytes)
 			(byte)0x75,
@@ -989,11 +993,11 @@ public class SampleEidCard extends EidCard {
 				(byte)0x9D,
 				(byte)0x80,
 				(byte)0x49,
-				(byte)0xD5 };
-		identityFile = new ElementaryFile(IDENTITY, idDirectory, idData);
+				(byte)0xD5 };*/
+		identityFile = new ElementaryFile(IDENTITY, idDirectory, (short)0xD0);
 
 		// initialize SGN#RN EF 
-		byte[] idSignData =
+		/*byte[] idSignData =
 			{
 				(byte)0x4F,
 				(byte)0xC8,
@@ -1122,13 +1126,13 @@ public class SampleEidCard extends EidCard {
 				(byte)0x0F,
 				(byte)0x54,
 				(byte)0x0D,
-				(byte)0x53 };
+				(byte)0x53 };*/
 		identityFileSignature =
-			new ElementaryFile(SGN_IDENTITY, idDirectory, idSignData);
+			new ElementaryFile(SGN_IDENTITY, idDirectory, (short)0x80);
 
 		// initialize ID#Address EF 
-		byte[] address = {
-			/* Street + number */
+		/*byte[] address = {
+			 Street + number 
 			 (byte)0x01, (byte)0x12,
 			// "Meirplaats 1 bus 1"
 			(byte)0x4D,
@@ -1149,11 +1153,11 @@ public class SampleEidCard extends EidCard {
 				(byte)0x73,
 				(byte)0x20,
 				(byte)0x31,
-			/* ZIP code */
+			 ZIP code 
 			 (byte)0x02, (byte)0x04,
 			// "2000"
 			 (byte)0x32, (byte)0x30, (byte)0x30, (byte)0x30,
-			/* Municipality */
+			 Municipality 
 			 (byte)0x03, (byte)0x09,
 			// "Antwerpen"
 			(byte)0x41,
@@ -1165,20 +1169,20 @@ public class SampleEidCard extends EidCard {
 				(byte)0x70,
 				(byte)0x65,
 				(byte)0x6E };
-		// address is 113 bytes, and should be padded with zeros
+		// address is 117 bytes, and should be padded with zeros
+		*/
 		
-		//TODO: depending on the edi card version, the address is of different length (current: 17)
-		byte[] addressData = new byte[113];
+		/*byte[] addressData = new byte[113];
 		Util.arrayCopy(
 			address,
 			(short)0,
 			addressData,
 			(short)0,
-			(short)address.length);
-		addressFile = new ElementaryFile(ADDRESS, idDirectory, addressData);
+			(short)address.length);*/
+		addressFile = new ElementaryFile(ADDRESS, idDirectory, (short)117);
 
 		// initialize SGN#Address EF 
-		byte[] addressSignData =
+		/*byte[] addressSignData =
 			{
 				(byte)0x59,
 				(byte)0xDC,
@@ -1307,12 +1311,12 @@ public class SampleEidCard extends EidCard {
 				(byte)0x09,
 				(byte)0xAA,
 				(byte)0x75,
-				(byte)0xB1 };
+				(byte)0xB1 };*/
 		addressFileSignature =
-			new ElementaryFile(SGN_ADDRESS, idDirectory, addressSignData);
+			new ElementaryFile(SGN_ADDRESS, idDirectory, (short)128);
 
 		// initialize PuK#7 ID (CA Role ID) EF 
-		byte[] caRoleIdData =
+		/*byte[] caRoleIdData =
 			{
 				(byte)0x8F,
 				(byte)0x14,
@@ -1333,14 +1337,14 @@ public class SampleEidCard extends EidCard {
 				(byte)0xCB,
 				(byte)0x9E,
 				(byte)0x91,
-				(byte)0x97 };
+				(byte)0x97 };*/
 		caRoleIDFile =
-			new ElementaryFile(CA_ROLE_ID, idDirectory, caRoleIdData);
+			new ElementaryFile(CA_ROLE_ID, idDirectory, (short)0x20);
 
 		// initialize Preferences EF to 100 zero bytes 
-		byte[] prefData = new byte[100];
+		//byte[] prefData = new byte[100];
 		preferencesFile =
-			new ElementaryFile(PREFERENCES, idDirectory, prefData);
+			new ElementaryFile(PREFERENCES, idDirectory, (short)100);
 
 	}
 
@@ -1353,50 +1357,50 @@ public class SampleEidCard extends EidCard {
 		 * these 3 certificates are the same for all sample eid card applets
 		 * therefor they are made static and the data is allocated only once
 		 */
-		if (SampleEidCard.citizenCaCert == null)
-			SampleEidCard.citizenCaCert = new byte[1017];
+		/*if (EmptyEidCard.citizenCaCert == null)
+			EmptyEidCard.citizenCaCert = new byte[1017];*/
 		caCertificate =
 			new ElementaryFile(
 				CA_CERTIFICATE,
 				belpicDirectory,
-				SampleEidCard.citizenCaCert);
+				(short)1200);
 
-		if (SampleEidCard.rrnCert == null)
-			SampleEidCard.rrnCert = new byte[968];
+		/*if (EmptyEidCard.rrnCert == null)
+			EmptyEidCard.rrnCert = new byte[968];*/
 		rrnCertificate =
 			new ElementaryFile(
 				RRN_CERTIFICATE,
 				belpicDirectory,
-				SampleEidCard.rrnCert);
+				(short)1200);
 
-		if (SampleEidCard.rootCaCert == null)
-			SampleEidCard.rootCaCert = new byte[952];
+		/*if (EmptyEidCard.rootCaCert == null)
+			EmptyEidCard.rootCaCert = new byte[952];*/
 		rootCaCertificate =
 			new ElementaryFile(
 				ROOT_CA_CERTIFICATE,
 				belpicDirectory,
-				SampleEidCard.rootCaCert);
+				(short)1200);
 
 		/*
 		 * to save some memory we only support 1 photo for all subclasses
 		 * ideally this should be applet specific and have max size 3584 (3.5K)
 		 */
-		if (SampleEidCard.photoData == null)
-			SampleEidCard.photoData = new byte[2887];
+		/*if (EmptyEidCard.photoData == null)
+			EmptyEidCard.photoData = new byte[2887];*/
 		photoFile =
-			new ElementaryFile(PHOTO, idDirectory, SampleEidCard.photoData);
+			new ElementaryFile(PHOTO, idDirectory, (short)3584);
 
 		/*
 		 * certificate #2 and #3 are applet specific
 		 * allocate enough memory
 		 */
 		authenticationCertificate =
-			new ElementaryFile(AUTH_CERTIFICATE, belpicDirectory, (short)1100);
+			new ElementaryFile(AUTH_CERTIFICATE, belpicDirectory, (short)1200);
 		nonRepudiationCertificate =
 			new ElementaryFile(
 				NONREP_CERTIFICATE,
 				belpicDirectory,
-				(short)1120);
+				(short)1200);
 
 	}
 
@@ -1424,7 +1428,7 @@ public class SampleEidCard extends EidCard {
 				KeyBuilder.LENGTH_RSA_1024,
 				false);
 
-		byte[] P =
+		/*byte[] P =
 			{
 				(byte)0xdd,
 				(byte)0x15,
@@ -1906,7 +1910,7 @@ public class SampleEidCard extends EidCard {
 				(byte)0x9d };
 		publicKey.setModulus(modulus, (short)0, (short)128);
 
-		basicKeyPair = new KeyPair(publicKey, privateKey);
+		basicKeyPair = new KeyPair(publicKey, privateKey);*/
 
 	}
 

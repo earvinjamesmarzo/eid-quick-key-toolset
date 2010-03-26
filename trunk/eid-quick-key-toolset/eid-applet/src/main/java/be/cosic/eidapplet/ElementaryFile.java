@@ -80,7 +80,8 @@ public class ElementaryFile extends File {
 		short length) {
 
 		//Update the data array to the right length
-		data = new byte[(short)(dataOffset + length)];
+		//TODO: this is impossible: work with max array size
+		//data = new byte[(short)(dataOffset + length)];
 		// update size 
 		size = (short) (dataOffset + length);
 		
