@@ -117,4 +117,13 @@ public class TextUtils {
 		return res;
 	}
 
+	
+	public static final byte[] shortToByteArray(final short value) {
+		return new byte[]{
+		(byte)(value >>> 8), (byte)(value) };
+	}
+
+	public static final short byteArrayToShort(final byte [] b) {
+		return (short) (((b[0] & 0xFF) << 8) + (b[1] & 0xFF));
+	}
 }

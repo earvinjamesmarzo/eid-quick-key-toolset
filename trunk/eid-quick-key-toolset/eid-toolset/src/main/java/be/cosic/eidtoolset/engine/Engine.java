@@ -12,6 +12,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 import java.util.Hashtable;
 
 
@@ -35,6 +36,7 @@ import be.cosic.eidtoolset.exceptions.NoSuchFeature;
 import be.cosic.eidtoolset.exceptions.SmartCardReaderException;
 import be.cosic.eidtoolset.exceptions.UnknownCardException;
 import be.cosic.util.TextUtils;
+import be.cosic.util.X509Utils;
 
 
 import be.cosic.eidtoolset.eidlibrary.*;
@@ -62,13 +64,79 @@ public class Engine extends Component{
 	    			
 	    		String path = "C:\\test.xml";
 	    			
-	    		//belpicCard.eIDToLibrary(path);
+	    		/////////////////////belpicCard.eIDToLibrary(path);
 	    		
-	    		MasterFile mf = belpicCard.readDocument(path);
+	    		//MasterFile mf = belpicCard.readDocument(path);
 	    		
-	    		System.out.println("mfid: " + DatatypeConverter.printBase64Binary(mf.getFileID()));
+	    		//System.out.println("mfid: " + DatatypeConverter.printBase64Binary(mf.getFileID()));
 	            
 	    		
+	    		belpicCard.libraryToEid(path);
+	    		
+	    		//System.out.println("data of cardholder in array: " + TextUtils.hexDump(belpicCard.readCitizenPhotoBytes()));
+	    		//System.out.println("data of cardholder in array size : " + belpicCard.readCitizenIdentityDataBytes().length);
+	    		
+	    		//belpicCard.readNonRepCertificateBytes()
+	    		
+	    		drie CA certificaten hardcoden: voorlopig houden op zelfde certificaten: zie fedict later voor aanmaken speciemn
+	    		testen van veranderen van certificaten naar specimen certificaten en veranderen van id data--> certificaat zou ook moeten veranderen
+	    		dan enkel nog write laten werken zodat nieuwe public key gesigned wordt
+	    		
+	    		
+	    		System.out.println("non rep cert of cardholder in array: " + TextUtils.hexDump(belpicCard.readNonRepCertificateBytes()));
+	    		
+	    		
+	    		
+	    		
+	    		byte[] id = belpicCard.readCitizenIdentityDataBytes();
+    			
+	    		Hashtable table = new Hashtable();
+	            
+	            IdentityDataParser.ParseIdentityData(id,table);
+	            
+	            //System.out.println("data of cardholder in array: " + TextUtils.hexDump(id));
+	            System.out.println("datalength: " + id.length);
+	            System.out.println("parsed data of the cardholder: " + table.toString());
+	    		
+	            X509Certificate cert = X509Utils.deriveCertificateFrom(belpicCard.readNonRepCertificateBytes());
+	    		
+	    		
+	    		X509Utils.changeCertSubjectData(cert.getEncoded(), id);
+	    		
+	    		//String path2 = "C:\\nonrep.crt";
+	    		//X509Utils.dumpCertificateToFile(path2, cert);
+	    		//belpicCard.writeEid();
+	    		
+	    		
+	    		//belpicCard.closeReader();
+	    		
+	    		//belpicCard.clearCache();
+	    		
+	    		//System.out.println("data of cardholder in array: " + TextUtils.hexDump(belpicCard.readCitizenPhotoBytes()));
+	    		//System.out.println("data of cardholder in array size : " + belpicCard.readCitizenPhotoBytes().length);
+	    		
+	    		/*
+	    		byte[] id = belpicCard.readCitizenIdentityDataBytes();
+    			
+	    		Hashtable table = new Hashtable();
+	            
+	            IdentityDataParser.ParseIdentityData(id,table);
+	            
+	            System.out.println("data of cardholder in array: " + TextUtils.hexDump(id));
+	            System.out.println("datalength: " + id.length);
+	            System.out.println("parsed data of the cardholder: " + table.toString());
+	    		
+	            byte[] ad = belpicCard.readCitizenAddressBytes();
+    			
+	    		table = new Hashtable();
+	            
+	            IdentityDataParser.ParseIdentityAddressData(ad,table);
+	            
+	            System.out.println("data of cardholder in array: " + TextUtils.hexDump(ad));
+	            System.out.println("datalength: " + ad.length);
+	            System.out.println("parsed data of the cardholder: " + table.toString());
+	    		
+	    		/*
 	    		
 	    		byte[] ad = mf.getIDDirectory().getAddressFile().getFileData();
 	    		
@@ -183,7 +251,7 @@ public class Engine extends Component{
 	        	 img = (BufferedImage) Toolkit.getDefaultToolkit().createImage(photo);*/
 	        
 	        } catch (Exception e) {
-				System.out.println("Exception"); 
+				System.out.println("Exception: " + e); 
 				e.printStackTrace();
 			
 			}

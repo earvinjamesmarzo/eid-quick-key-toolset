@@ -148,8 +148,14 @@ public class SmartCard implements SmartCardCommandsInterface {
 				throw new InvalidResponse();
 			}
 			else if(keyBytes[0] != (byte)0x90 || keyBytes[1] != (byte)0x00){
+				
+				
 				System.err.println("Invalid response during write: <" + TextUtils.hexDump(keyBytes)
 						+ ">"); 
+				
+				System.out.println("total apdus: " + apdusLeft);
+				System.out.println("apdu number: " + i);
+				System.out.println("write data length: " + writeDataLength);
 				throw new InvalidResponse();
 			}			
 		}

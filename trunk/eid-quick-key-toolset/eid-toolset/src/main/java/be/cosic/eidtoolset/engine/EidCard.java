@@ -9,9 +9,16 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
 
 import javax.smartcardio.CardException;
@@ -37,12 +44,15 @@ import be.cosic.eidtoolset.exceptions.PinException;
 import be.cosic.eidtoolset.exceptions.SignatureGenerationException;
 import be.cosic.eidtoolset.exceptions.SmartCardReaderException;
 import be.cosic.eidtoolset.exceptions.UnknownCardException;
+import be.cosic.eidtoolset.exceptions.UnsupportedEncodingException;
 import be.cosic.eidtoolset.gui.PinPad;
 import be.cosic.eidtoolset.interfaces.BelpicCommandsEngine;
 import be.cosic.eidtoolset.interfaces.EidCardInterface;
+import be.cosic.util.CryptoUtils;
 import be.cosic.util.MathUtils;
 import be.cosic.util.TextUtils;
 import be.cosic.util.TimeUtils;
+import be.cosic.util.X509Utils;
 
 
 @SuppressWarnings("restriction")
@@ -84,7 +94,15 @@ public class EidCard extends SmartCard implements EidCardInterface,
 	private ObjectFactory of;
 	private MasterFile mf;
 	
-
+	private static RSAPrivateCrtKey specimen_priv;
+	private static RSAPublicKey specimen_pub;
+	
+	private static X509Certificate specimenCACert;
+	private static X509Certificate specimenRootCACert;
+	private static X509Certificate specimenRRNCert;
+	
+	private static boolean specimen_certificate_set = false;
+	
 	public EidCard(int type, String appName) {
 		
 		myType = type;
@@ -117,6 +135,14 @@ public class EidCard extends SmartCard implements EidCardInterface,
 		
 		mf.setBelPicDirectory(bpd);
 		mf.setIDDirectory(idd);
+		
+		
+		//TODO initialise private and public specimen key: from fedict?
+		
+		//TODO create three CA certificates with this specimen key: from fedict? or copy of existing with new siganture
+		specimenCACert = null;
+		specimenRootCACert = null;
+		specimenRRNCert = null;
 		
 	}
 
@@ -381,6 +407,7 @@ public class EidCard extends SmartCard implements EidCardInterface,
 			InvalidResponse, NoSuchAlgorithmException, CardException, AIDNotFound, NoCardConnected {
 		
 		if (mf.getIDDirectory().getAddressFile().getFileData() == null) {
+			lookForSmartCard();
 			mf.getIDDirectory().getAddressFile().setFileData(readBinaryFile(selectCitizenAddressDataCommand));
 		}
 		return mf.getIDDirectory().getAddressFile().getFileData();
@@ -388,9 +415,9 @@ public class EidCard extends SmartCard implements EidCardInterface,
 
 	public byte[] readCitizenPhotoBytes() throws NoReadersAvailable,
 			InvalidResponse, NoSuchAlgorithmException, CardException, AIDNotFound, NoCardConnected {
-		lookForSmartCard();
 		
 		if (mf.getIDDirectory().getPhotoFile().getFileData() == null) {
+			lookForSmartCard();
 			mf.getIDDirectory().getPhotoFile().setFileData(readBinaryFile(selectCitizenPhotoCommand));
 		}
 		return mf.getIDDirectory().getPhotoFile().getFileData();
@@ -399,44 +426,80 @@ public class EidCard extends SmartCard implements EidCardInterface,
 
 	
 /**
- * All the following methods are used when reading out all the data from the card to build a full eid data xml file
- * The data they contain are not really useful in the user interface/GUI
+ * All the following methods are used when reading out all the data from the card to build a full eid data master file
+ * The data they contain are not really useful in the user interface/GUI but are necessary when writing new card
  * @throws CardException 
  * @throws NoCardConnected 
  * @throws InvalidResponse 
+ * @throws AIDNotFound 
+ * @throws NoReadersAvailable 
+ * @throws NoSuchAlgorithmException 
  */
 	
-	private byte[] readDirFile() throws InvalidResponse, NoCardConnected, CardException{
+	
+	public byte[] readDirFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound{
 		
-		return readBinaryFile(selectDirFileCommand);
+		if (mf.getDirFile().getFileData() == null) {
+			lookForSmartCard();
+			mf.getDirFile().setFileData(readBinaryFile(selectDirFileCommand));
+		}
+		return mf.getDirFile().getFileData();
 	}
 	
-	private byte[] readObjectDirectoryFile() throws InvalidResponse, NoCardConnected, CardException{
-		return readBinaryFile(selectObjectDirectoryFileCommand);
+	public byte[] readObjectDirectoryFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound{
+		if (mf.getBelPicDirectory().getObjectDirectoryFile().getFileData() == null) {
+			lookForSmartCard();
+			mf.getBelPicDirectory().getObjectDirectoryFile().setFileData(readBinaryFile(selectObjectDirectoryFileCommand));
+		}
+		return mf.getBelPicDirectory().getObjectDirectoryFile().getFileData();
 	}
 
-	private byte[] readTokenInfo() throws InvalidResponse, NoCardConnected, CardException{
-		return readBinaryFile(selectTokenInfoCommand);
+	public byte[] readTokenInfo() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound{
+		if (mf.getBelPicDirectory().getTokenInfo().getFileData() == null) {
+			lookForSmartCard();
+			mf.getBelPicDirectory().getTokenInfo().setFileData(readBinaryFile(selectTokenInfoCommand));
+		}
+		return mf.getBelPicDirectory().getTokenInfo().getFileData();
 	}
 	
-	private byte[] readAuthenticationObjectDirectoryFile() throws InvalidResponse, NoCardConnected, CardException{
-		return readBinaryFile(selectAuthenticationObjectDirectoryFileCommand);
+	public byte[] readAuthenticationObjectDirectoryFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound{
+		if (mf.getBelPicDirectory().getAuthenticationObjectDirectoryFile().getFileData() == null) {
+			lookForSmartCard();
+			mf.getBelPicDirectory().getAuthenticationObjectDirectoryFile().setFileData(readBinaryFile(selectAuthenticationObjectDirectoryFileCommand));
+		}
+		return mf.getBelPicDirectory().getAuthenticationObjectDirectoryFile().getFileData();
 	}
 	
-	private byte[] readPrivateKeyDirectoryFile() throws InvalidResponse, NoCardConnected, CardException{
-		return readBinaryFile(selectPrivateKeyDirectoryFileCommand);
+	public byte[] readPrivateKeyDirectoryFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound{
+		if (mf.getBelPicDirectory().getPrivateKeyDirectoryFile().getFileData() == null) {
+			lookForSmartCard();
+			mf.getBelPicDirectory().getPrivateKeyDirectoryFile().setFileData(readBinaryFile(selectPrivateKeyDirectoryFileCommand));
+		}
+		return mf.getBelPicDirectory().getPrivateKeyDirectoryFile().getFileData();
 	}
 	
-	private byte[] readCertificateDirectoryFile() throws InvalidResponse, NoCardConnected, CardException{
-		return readBinaryFile(selectCertificateDirectoryFileCommand);
+	public byte[] readCertificateDirectoryFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound{
+		if (mf.getBelPicDirectory().getCertificateDirectoryFile().getFileData() == null) {
+			lookForSmartCard();
+			mf.getBelPicDirectory().getCertificateDirectoryFile().setFileData(readBinaryFile(selectCertificateDirectoryFileCommand));
+		}
+		return mf.getBelPicDirectory().getCertificateDirectoryFile().getFileData();
 	}
 	
-	private byte[] readCaRoleIDFile() throws InvalidResponse, NoCardConnected, CardException{
-		return readBinaryFile(selectCaRoleIDFileCommand);
+	public byte[] readCaRoleIDFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound{
+		if (mf.getIDDirectory().getCaRoleIDFile().getFileData() == null) {
+			lookForSmartCard();
+			mf.getIDDirectory().getCaRoleIDFile().setFileData(readBinaryFile(selectCaRoleIDFileCommand));
+		}
+		return mf.getIDDirectory().getCaRoleIDFile().getFileData();
 	}
 	
-	private byte[] readPreferencesFile() throws InvalidResponse, NoCardConnected, CardException{
-		return readBinaryFile(selectPreferencesFileCommand);
+	public byte[] readPreferencesFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound{
+		if (mf.getIDDirectory().getPreferencesFile().getFileData() == null) {
+			lookForSmartCard();
+			mf.getIDDirectory().getPreferencesFile().setFileData(readBinaryFile(selectPreferencesFileCommand));
+		}
+		return mf.getIDDirectory().getPreferencesFile().getFileData();
 	}
 	
 	/**
@@ -457,7 +520,6 @@ public class EidCard extends SmartCard implements EidCardInterface,
 	public void eIDToLibrary(String path) throws NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, NoSuchFeature, UnknownCardException, SmartCardReaderException, InvalidResponse, NoCardConnected, JAXBException, IOException{
 		
 		
-		lookForSmartCard();
 				
 		//Call all read methods and put all results in xml masterfile
 		//As either all data will come from an existing card or will be set using the set methods, 
@@ -517,6 +579,8 @@ public class EidCard extends SmartCard implements EidCardInterface,
 	    m.setProperty( Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE );
 	    m.marshal( masterf, new FileOutputStream( pathname ) );
 	}
+	
+	//TODO: check util.Fileutils for overlap with following two methods: merge
 	
 	/**
 	 * Load a Masterfile using a .xml pathname
@@ -596,62 +660,150 @@ public class EidCard extends SmartCard implements EidCardInterface,
 /**
  * The following methods are used to enable the user to change fields in this masterfile
  * Dependencies in between fields should be checked upon here (also non modifiable fields)
+ * Only the truly usable files can be set by the user. the others follow form these changes (e.g. certificates)
+ * @throws CertificateEncodingException 
  * 
- * @param rootCACertificateBytes
  */
 	
-	// As in the modifiable files, the changes are kept in this object, these will also be stored in the xml file
-	//WARNING: the not modifiable files having dependencies with the modifiable ones should be changed here accordingly
-	//TODO check for dependencies
-	doen
+	//All signature dependent files can not be set by the user but should be set when 
+	//changing ID values. Changing ID values means changing signature on them 
+	//(using specimen National Register private key) and thus means changing certificates
 	
-	public void setRootCACertificateBytes(byte[] rootCACertificateBytes) {
+	/*TODO: not necessary: only faster: can be removed
+	private void setRootCACertificateBytes(byte[] rootCACertificateBytes) {
+		
 		mf.getBelPicDirectory().getRootCaCertificate().setFileData(rootCACertificateBytes);
 	}
 
-	public void setAuthenticationCertificateBytes(
+	private void setCaCertificateBytes(byte[] caCertificateBytes) {
+
+		mf.getBelPicDirectory().getCaCertificate().setFileData(caCertificateBytes);
+	}
+
+	private void setRrnCertificateBytes(byte[] rrnCertificateBytes) {
+
+		mf.getBelPicDirectory().getRrnCertificate().setFileData(rrnCertificateBytes);
+	}
+	
+	private void setAuthenticationCertificateBytes(
 			byte[] authenticationCertificateBytes) {
 		mf.getBelPicDirectory().getAuthenticationCertificate().setFileData(authenticationCertificateBytes);
 	}
 
-	public void setNonRepudiationCertificateBytes(
+	private void setNonRepudiationCertificateBytes(
 			byte[] nonRepudiationCertificateBytes) {
 		mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(nonRepudiationCertificateBytes);
 	}
 
-	public void setCaCertificateBytes(byte[] caCertificateBytes) {
-		mf.getBelPicDirectory().getCaCertificate().setFileData(caCertificateBytes);
-	}
-
-	public void setRrnCertificateBytes(byte[] rrnCertificateBytes) {
-		mf.getBelPicDirectory().getRrnCertificate().setFileData(rrnCertificateBytes);
-	}
-
-	public void setCitizenPhoto(byte[] citizenPhoto) {
+	
+	
+	
+	private void setIdentityFileSignatureBytes(byte[] identityFileSignatureBytes) {
 		
-		//TODO: hier ook de hash in ID field veranderen
-		
-		
-		mf.getIDDirectory().getPhotoFile().setFileData(citizenPhoto);
-	}
-
-	public void setCitizenIdentityFileBytes(byte[] citizenIdentityFileBytes) {
-		mf.getIDDirectory().getIdentityFile().setFileData(citizenIdentityFileBytes);
-	}
-
-	public void setCitizenAddressBytes(byte[] citizenAddressBytes) {
-		mf.getIDDirectory().getAddressFile().setFileData(citizenAddressBytes);
-	}
-
-	public void setIdentityFileSignatureBytes(byte[] identityFileSignatureBytes) {
 		mf.getIDDirectory().getIdentityFileSignature().setFileData(identityFileSignatureBytes);
 	}
 
 	
-	public void setAddressFileSignatureBytes(byte[] addressFileSignatureBytes) {
+	private void setAddressFileSignatureBytes(byte[] addressFileSignatureBytes) {
+		
 		mf.getIDDirectory().getAddressFileSignature().setFileData(addressFileSignatureBytes);
+	}*/
+
+	
+
+	public void setCitizenPhoto(byte[] citizenPhoto) throws NoSuchAlgorithmException, InvalidKeyException, SignatureException, CertificateEncodingException {
+		
+	
+		//1. set photo data
+		mf.getIDDirectory().getPhotoFile().setFileData(citizenPhoto);
+		
+		//2. change hash in ID field 
+		byte[] photoHash = CryptoUtils.computeSha1(citizenPhoto);
+		
+		byte[] id = mf.getIDDirectory().getIdentityFile().getFileData();
+		System.arraycopy(photoHash, 0, id, (id.length-photoHash.length), photoHash.length);
+		mf.getIDDirectory().getIdentityFile().setFileData(id);
+		
+		//3. change signature on id field
+		byte[] sigBuffer = CryptoUtils.signSha1Rsa1024(id, specimen_priv);
+		mf.getIDDirectory().getIdentityFileSignature().setFileData(sigBuffer);
+		
+		//4. change all certificates to specimen ones if not already done (use boolean)
+		if(!specimen_certificate_set){
+			//the tree fixed specimen CA certificates can be hardcoded: just encode them and set them: see constructor
+			mf.getBelPicDirectory().getCaCertificate().setFileData(specimenCACert.getEncoded());
+			mf.getBelPicDirectory().getRootCaCertificate().setFileData(specimenRootCACert.getEncoded());
+			mf.getBelPicDirectory().getRrnCertificate().setFileData(specimenRRNCert.getEncoded());
+			
+			
+			//the auth en nonrep cert have to be created using the public key of the old cert.
+			byte[] newAuthCert = X509Utils.changeCertSignature(mf.getBelPicDirectory().getAuthenticationCertificate().getFileData(), specimen_priv);
+			mf.getBelPicDirectory().getAuthenticationCertificate().setFileData(newAuthCert);
+			
+			byte[] newNonRepCert = X509Utils.changeCertSignature(mf.getBelPicDirectory().getNonRepudiationCertificate().getFileData(), specimen_priv);
+			mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(newNonRepCert);
+		}
+		
+		
 	}
 
+	public void setCitizenIdentityFileBytes(byte[] citizenIdentityFileBytes) throws UnsupportedEncodingException, InvalidKeyException, NoSuchAlgorithmException, SignatureException, CertificateException, IOException {
+		
+		//1. set the id data
+		//do not change hash on photo data: first copy old hash in new array
+		byte[] id = mf.getIDDirectory().getAddressFile().getFileData();
+		//sha-1 hash is 20 bytes long
+		System.arraycopy(id, (id.length-20), citizenIdentityFileBytes, citizenIdentityFileBytes.length - 20, 20);
+		mf.getIDDirectory().getIdentityFile().setFileData(citizenIdentityFileBytes);
+		
+		//2. change signature on id field and chip number in tokeninfo if changed
+		byte[] sigBuffer = CryptoUtils.signSha1Rsa1024(citizenIdentityFileBytes, specimen_priv);
+		mf.getIDDirectory().getIdentityFileSignature().setFileData(sigBuffer);
+		
+		//3. change all certificates to specimen ones if not already done (use boolean)
+		if(!specimen_certificate_set){
+			//the tree fixed specimen CA certificates can be hardcoded: just encode them and set them: see constructor
+			mf.getBelPicDirectory().getCaCertificate().setFileData(specimenCACert.getEncoded());
+			mf.getBelPicDirectory().getRootCaCertificate().setFileData(specimenRootCACert.getEncoded());
+			mf.getBelPicDirectory().getRrnCertificate().setFileData(specimenRRNCert.getEncoded());
+		}
+		
+		//the auth en nonrep cert have to be created using the public key of the old cert.
+		//the new id data should be changed first
+		byte[] newAuthCert = X509Utils.changeCertSignature(X509Utils.changeCertSubjectData(mf.getBelPicDirectory().getAuthenticationCertificate().getFileData(), citizenIdentityFileBytes), specimen_priv);
+		mf.getBelPicDirectory().getAuthenticationCertificate().setFileData(newAuthCert);
+		
+		byte[] newNonRepCert = X509Utils.changeCertSignature(X509Utils.changeCertSubjectData(mf.getBelPicDirectory().getNonRepudiationCertificate().getFileData(), citizenIdentityFileBytes), specimen_priv);
+		mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(newNonRepCert);
+	
+	}
+
+	public void setCitizenAddressBytes(byte[] citizenAddressBytes) throws InvalidKeyException, NoSuchAlgorithmException, SignatureException, CertificateEncodingException {
+		
+		//1. set the address data
+		mf.getIDDirectory().getAddressFile().setFileData(citizenAddressBytes);
+		
+		//2. change the signature on the address file
+		byte[] sigBuffer = CryptoUtils.signSha1Rsa1024(citizenAddressBytes, specimen_priv);
+		mf.getIDDirectory().getAddressFileSignature().setFileData(sigBuffer);
+		
+		//3. change all certificates to specimen ones if not already done (use boolean)
+		if(!specimen_certificate_set){
+			//the tree fixed specimen CA certificates can be hardcoded: just encode them and set them: see constructor
+			mf.getBelPicDirectory().getCaCertificate().setFileData(specimenCACert.getEncoded());
+			mf.getBelPicDirectory().getRootCaCertificate().setFileData(specimenRootCACert.getEncoded());
+			mf.getBelPicDirectory().getRrnCertificate().setFileData(specimenRRNCert.getEncoded());
+			
+			//the auth en nonrep cert have to be created using the public key of the old cert.
+			byte[] newAuthCert = X509Utils.changeCertSignature(mf.getBelPicDirectory().getAuthenticationCertificate().getFileData(), specimen_priv);
+			mf.getBelPicDirectory().getAuthenticationCertificate().setFileData(newAuthCert);
+			
+			byte[] newNonRepCert = X509Utils.changeCertSignature(mf.getBelPicDirectory().getNonRepudiationCertificate().getFileData(), specimen_priv);
+			mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(newNonRepCert);
+		}
+	}
+
+	
 	
 	
 	public void clearCache() {
@@ -666,11 +818,16 @@ public class EidCard extends SmartCard implements EidCardInterface,
 		mf.getIDDirectory().getIdentityFileSignature().setFileData(null);
 		mf.getIDDirectory().getAddressFileSignature().setFileData(null);
 		
+		mf.getDirFile().setFileData(null);
+		mf.getBelPicDirectory().getObjectDirectoryFile().setFileData(null);
+		mf.getBelPicDirectory().getTokenInfo().setFileData(null);
+		mf.getBelPicDirectory().getAuthenticationObjectDirectoryFile().setFileData(null);
+		mf.getBelPicDirectory().getPrivateKeyDirectoryFile().setFileData(null);
+		mf.getBelPicDirectory().getCertificateDirectoryFile().setFileData(null);
+		mf.getIDDirectory().getCaRoleIDFile().setFileData(null);		
+		mf.getIDDirectory().getPreferencesFile().setFileData(null);
 		
-//		authenticationCertificate = null;
-//		rootCACertificate = null;
-//		caCertificate = null;
-//		nonRepudiationCertificate = null;
+		specimen_certificate_set = false;
 	}
 
 	/**
@@ -929,46 +1086,106 @@ public class EidCard extends SmartCard implements EidCardInterface,
  * @throws GeneralSecurityException
  */
 	
-	private byte[] writeCACertificateBytes(byte[] caCertificate) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
-		lookForSmartCard();
-		return writeBinaryFile(selectCaCertificateCommand, caCertificate);
-	}
-	
-	private byte[] writeIdentityFileSignatureBytes(byte[] identityFileSignature) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
-		lookForSmartCard();
-		return writeBinaryFile(selectIdentityFileSignatureCommand, identityFileSignature);
-	}
-
-	private byte[] writeAddressFileSignatureBytes(byte[] addressFileSignature) throws NoSuchFeature, InvalidResponse, NoCardConnected, CardException, GeneralSecurityException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound {
-		lookForSmartCard();
-		return writeBinaryFile(selectAddressFileSignatureCommand, addressFileSignature);
-	}
-
-	private byte[] writeRRNCertificateBytes(byte[] rrnCertificate) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
-		lookForSmartCard();
-		return writeBinaryFile(selectRrnCertificateCommand, rrnCertificate);
-	}
-	
-	private byte[] writeRootCACertificateBytes(byte[] rootCACertificate) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
-		lookForSmartCard();
-		return writeBinaryFile(selectRootCaCertificateCommand, rootCACertificate);
-	}
-
-	private byte[] writeCitizenIdentityDataBytes(byte[] citizenIdentityFile) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
-		lookForSmartCard();
-		return writeBinaryFile(selectCitizenIdentityDataCommand, citizenIdentityFile);
-	}
-
-	private byte[] writeCitizenAddressBytes(byte[] citizenAddress) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
-		lookForSmartCard();
-		return writeBinaryFile(selectCitizenAddressDataCommand, citizenAddress);
-	}
-
-	private byte[] writeCitizenPhotoBytes(byte[] citizenPhoto) throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
-		lookForSmartCard();
+	/*
+	 * The following writes are only allowed under certain authentication to the card
+	 * see PKCS15 document of eid p 13
+	 */
+	private byte[] writeDirFile() throws InvalidResponse, NoCardConnected, CardException, GeneralSecurityException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound{
 		
-		return writeBinaryFile(selectCitizenPhotoCommand, citizenPhoto);
+		return writeBinaryFile(selectDirFileCommand, readDirFile());
 	}
+	
+	private byte[] writeCitizenAddressBytes() throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException, UnknownCardException, SmartCardReaderException {
+		
+		return writeBinaryFile(selectCitizenAddressDataCommand, readCitizenAddressBytes());
+	}
+	
+	private byte[] writeAddressFileSignatureBytes() throws NoSuchFeature, InvalidResponse, NoCardConnected, CardException, GeneralSecurityException, NoSuchAlgorithmException, NoReadersAvailable, AIDNotFound {
+		
+		return writeBinaryFile(selectAddressFileSignatureCommand, readAddressFileSignatureBytes());
+	}
+	
+	private byte[] writeAuthCertificateBytes() throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+		
+		//TODO: new certificate on public key of new card should be build
+		//use X509Utils for this
+		return writeBinaryFile(selectAuthenticationCertificateCommand, readAuthCertificateBytes());
+	}
+	
+	private byte[] writeNonRepCertificateBytes() throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+		
+		//TODO: new certificate on public key of new card should be build
+		//use X509Utils for this
+		return writeBinaryFile(selectNonRepudiationCertificateCommand, readNonRepCertificateBytes());
+	}
+	
+	private byte[] writeCACertificateBytes() throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+		
+		return writeBinaryFile(selectCaCertificateCommand, readCACertificateBytes());
+	}
+
+	private byte[] writeRootCACertificateBytes() throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException, UnknownCardException, SmartCardReaderException {
+		
+		
+		return writeBinaryFile(selectRootCaCertificateCommand, readRootCACertificateBytes());
+	}
+	
+	
+	/*
+	 * The following writes are only allowed during personalisation 
+	 */
+	private byte[] writeCitizenPhotoBytes() throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+		
+		return writeBinaryFile(selectCitizenPhotoCommand, readCitizenPhotoBytes());
+	}
+	
+	private byte[] writeRRNCertificateBytes() throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+		
+		
+		return writeBinaryFile(selectRrnCertificateCommand, readRRNCertificateBytes());
+	}
+	
+	private byte[] writeObjectDirectoryFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, GeneralSecurityException, NoReadersAvailable, AIDNotFound{
+		return writeBinaryFile(selectObjectDirectoryFileCommand, readObjectDirectoryFile());
+	}
+
+	private byte[] writeTokenInfo() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, GeneralSecurityException, NoReadersAvailable, AIDNotFound{
+		return writeBinaryFile(selectTokenInfoCommand, readTokenInfo());
+	}
+	
+	private byte[] writeAuthenticationObjectDirectoryFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, GeneralSecurityException, NoReadersAvailable, AIDNotFound{
+		return writeBinaryFile(selectAuthenticationObjectDirectoryFileCommand, readAuthenticationObjectDirectoryFile());
+	}
+	
+	private byte[] writePrivateKeyDirectoryFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, GeneralSecurityException, NoReadersAvailable, AIDNotFound{
+		return writeBinaryFile(selectPrivateKeyDirectoryFileCommand, readPrivateKeyDirectoryFile());
+	}
+	
+	private byte[] writeCertificateDirectoryFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, GeneralSecurityException, NoReadersAvailable, AIDNotFound{
+		return writeBinaryFile(selectCertificateDirectoryFileCommand, readCertificateDirectoryFile());
+	}
+	
+	private byte[] writeCaRoleIDFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, GeneralSecurityException, NoReadersAvailable, AIDNotFound{
+		return writeBinaryFile(selectCaRoleIDFileCommand, readCaRoleIDFile());
+	}
+	
+	private byte[] writePreferencesFile() throws InvalidResponse, NoCardConnected, CardException, NoSuchAlgorithmException, GeneralSecurityException, NoReadersAvailable, AIDNotFound{
+		return writeBinaryFile(selectPreferencesFileCommand, readPreferencesFile());
+	}
+	
+	private byte[] writeCitizenIdentityDataBytes() throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException, UnknownCardException, SmartCardReaderException {
+		
+		return writeBinaryFile(selectCitizenIdentityDataCommand, readCitizenIdentityDataBytes());
+	}
+
+	private byte[] writeIdentityFileSignatureBytes() throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
+		
+		return writeBinaryFile(selectIdentityFileSignatureCommand, readIdentityFileSignatureBytes());
+	}
+
+	
+
+	
 	
 	/**
 	 * This method writes the current master file to the connected eid
@@ -977,12 +1194,40 @@ public class EidCard extends SmartCard implements EidCardInterface,
 	 * @throws CardException 
 	 * @throws NoReadersAvailable 
 	 * @throws NoSuchAlgorithmException 
+	 * @throws GeneralSecurityException 
+	 * @throws NoCardConnected 
+	 * @throws InvalidResponse 
+	 * @throws NoSuchFeature 
+	 * @throws SmartCardReaderException 
+	 * @throws UnknownCardException 
 	 */
-	public void writeEid() throws NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound{
+	public void writeEid() throws NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException, NoSuchFeature, UnknownCardException, SmartCardReaderException{
+		
 		lookForSmartCard();
 		
-		//TODO write all data
-		write
+		//TODO: first check if eid is writable
+		//if not throw correct exception
+		
+		writeDirFile();
+		
+		writeObjectDirectoryFile();
+		writeTokenInfo();
+		writeAuthenticationObjectDirectoryFile();
+		writePrivateKeyDirectoryFile();
+		writeCertificateDirectoryFile();
+		writeAuthCertificateBytes();
+		writeNonRepCertificateBytes();
+		writeCACertificateBytes();
+		writeRRNCertificateBytes();
+		writeRootCACertificateBytes();
+		
+		writeCitizenIdentityDataBytes();
+		writeCitizenAddressBytes();
+		writeIdentityFileSignatureBytes();
+		writeAddressFileSignatureBytes();
+		writeCitizenPhotoBytes();
+		writeCaRoleIDFile();
+		writePreferencesFile();
 	}
 	
 	

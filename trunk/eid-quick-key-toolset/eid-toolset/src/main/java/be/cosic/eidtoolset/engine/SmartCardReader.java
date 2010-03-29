@@ -240,15 +240,18 @@ public class SmartCardReader implements SmartCardReaderCommandsInterface,
 	public void powerOff() throws CardException{
 		//ctx.ReleaseContext();
 		try {
-			conn.close();
+			
 			card.disconnect(true);//boolean true will reset card: a select command is needed again after this
+			
 			card = null;
+			conn = null;
 		} catch (CardException e) {
 			if (debugLevel > 0){
 				e.printStackTrace();
 				System.err.println("Try to disconnect card form reader: " + ((CardTerminal)readers.get(usingReaderNr)).getName() + "\n Card already disconnected.");
 			}
 			card = null;
+			conn = null;
 			throw new CardException("Card already disconnected.");
 		}
 	}
