@@ -69,12 +69,14 @@ public class X509Utils {
 	public static byte[] changeCertSignature(byte[] cert,
 			RSAPrivateCrtKey specimenPriv) throws InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 		
+		
+		
 		//TODO: this should be replaced by getDataAtTag when this method is working for the tag corresponding to the signature
 		//Get the signature data and the signature offset
 		int signDataStart = 0;
 		int signDataLength = 0;
 		int signatureOffset = 0;
-		int tagnumber = 1;
+		int tagnumber = 0;
 		int i = 0;
 		int offset = 0;
 		int length = 0;
@@ -86,6 +88,7 @@ public class X509Utils {
 				//Tag id is larger then one byte
 				i += 1;
 				while((short)(cert[i]&0xff) > 127){
+					
 					i += 1;
 				}
 				i += 1;
@@ -108,6 +111,13 @@ public class X509Utils {
 			
 			//the second tag defines the signature data
 			if(tagnumber == 2){
+				System.out.println("i = " + i);
+				
+				
+				//TODO problemen i blijft gelijk aan 4/is gelijk aan 4: zou meer moeten zijn
+				
+				
+				
 				signDataStart = i;//TODO check if signature on data or also on tag id and data length: now only on data
 				signDataLength = length - (i-offset);
 				signatureOffset = offset + length;
@@ -115,15 +125,38 @@ public class X509Utils {
 				break;//Exit parsing if no other fiels are required
 			}
 			i = offset;
-			tagnumber =+1;
+			tagnumber += 1;
 		}
 
+		System.out.println("signDataStart = " + signDataStart);
+		System.out.println("signDataLength = " + signDataLength);
+		System.out.println("signatureOffset = " + signatureOffset);
+		
+		
 		//Sign the signature data with the specimen priv key and put it into the certificate
 		byte[] signBuffer = new byte[signDataLength];
 		System.arraycopy(cert, signDataStart, signBuffer, 0, signDataLength);
 		byte[] signature = CryptoUtils.signSha1Rsa1024(signBuffer, specimenPriv);
+		
+		//check length of signature!
+		System.out.println("total cert Length = " + cert.length);
+		
+		byte[] array = {cert[2],cert[3]};
+		int certificateLength = (short) (TextUtils.byteArrayToShort(array)+4);
+		
+		System.out.println("total cert Length in cert = " + certificateLength);
+		
+		
+		System.out.println("signatureLength = " + signature.length);
+		System.out.println("signaturetag = " + cert[signatureOffset]);
+		System.out.println("signatureLength in cert = " + cert[signatureOffset + 1]);
+		System.out.println("?signatureLength in cert, byte 2 = " + cert[signatureOffset + 2]);
+		
+		
+		//TODO: pas op signature niet zomaar op signatureOffset plaatsen:
+			
 		//As signature has fixed length copy back in cert is allowed
-		System.arraycopy(signature, 0, cert, signatureOffset, signature.length);
+		System.arraycopy(signature, 0, cert, signatureOffset + 3, signature.length);
 		
 		//Return the new certificate
 		return cert;
@@ -149,6 +182,7 @@ public class X509Utils {
         String subj = "SERIALNUMBER = " + table.get("National Number").toString() + ", GIVENNAME = " 
       		+ first	+ ", SURNAME = " + surname +	", CN = " + name + " (Signature)" + ", C = BE";
 		
+        
         return setDataAtTag(cert, new X500Principal(subj).getEncoded(), 8);
 	}
 	
@@ -215,12 +249,14 @@ public class X509Utils {
 		int length = 0;
 		while (i < cert.length) {
 			
+			
 			offset = i;
 			
 			if((cert[i]&0xff) > (byte)0x30){
 				//Tag id is larger then one byte
 				i += 1;
 				while((short)(cert[i]&0xff) > 127){
+					
 					i += 1;
 				}
 				i += 1;
@@ -260,13 +296,13 @@ public class X509Utils {
 	private static byte[] replaceTagData(byte[] cert, byte[] data, int offset,
 			int length) {
 		
-		
 		byte[] lengthLength;
 		if (data.length <= 127){
 			lengthLength = new byte[]{(byte)data.length};
 		}else {//if (data.length <= Short.MAX_VALUE)
 			lengthLength = TextUtils.shortToByteArray((short)data.length);
 		}
+		
 		
 		byte[] newCert = new byte[cert.length - length + data.length + lengthLength.length];
 		

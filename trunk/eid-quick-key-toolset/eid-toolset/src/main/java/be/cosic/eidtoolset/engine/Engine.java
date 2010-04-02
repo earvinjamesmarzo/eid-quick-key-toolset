@@ -73,14 +73,77 @@ public class Engine extends Component{
 	    		
 	    		belpicCard.libraryToEid(path);
 	    		
+	    		
+	    		
+	    		
+	    		
+	    		//testen van veranderen van certificaten naar specimen certificaten en veranderen van id data--> certificaat zou ook moeten veranderen
+	    		//dan enkel nog write laten werken zodat nieuwe public key gesigned wordt
+	    		
+	    		
+	    		/*
+	    		
+	    		X509Certificate cert = X509Utils.deriveCertificateFrom(belpicCard.readNonRepCertificateBytes());
+	    		
+	    		
+	    		System.out.println("NonRepCert names in array: " + cert.getSubjectX500Principal().getName());
+	    		
+	    		byte[] id = belpicCard.readCitizenIdentityDataBytes();
+    			
+	    		Hashtable table = new Hashtable();
+	            
+	            IdentityDataParser.ParseIdentityData(id,table);
+	            
+	            //System.out.println("data of cardholder in array: " + TextUtils.hexDump(id));
+	            //System.out.println("datalength: " + id.length);
+	            //System.out.println("parsed data of the cardholder: " + table.toString());
+	           
+	            table.put("Name", "Gillemon");
+	            //IdentityDataParser.ParseHashTableToIdentityData(table);
+	    		
+	           
+	            
+	            
+	           // hier problemen:
+	            belpicCard.setCitizenIdentityFileBytes(IdentityDataParser.ParseHashTableToIdentityData(table));
+	            
+	            
+	            cert = X509Utils.deriveCertificateFrom(belpicCard.readNonRepCertificateBytes());
+	    		
+	    		
+	    		System.out.println("NonRepCert names in array: " + cert.getSubjectX500Principal().getName());
+	    		
+	    		*/
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	    		
+	            
+	    		/*
 	    		//System.out.println("data of cardholder in array: " + TextUtils.hexDump(belpicCard.readCitizenPhotoBytes()));
 	    		//System.out.println("data of cardholder in array size : " + belpicCard.readCitizenIdentityDataBytes().length);
 	    		
 	    		//belpicCard.readNonRepCertificateBytes()
 	    		
-	    		drie CA certificaten hardcoden: voorlopig houden op zelfde certificaten: zie fedict later voor aanmaken speciemn
-	    		testen van veranderen van certificaten naar specimen certificaten en veranderen van id data--> certificaat zou ook moeten veranderen
-	    		dan enkel nog write laten werken zodat nieuwe public key gesigned wordt
+	    		//drie CA certificaten hardcoden: voorlopig houden op zelfde certificaten: zie fedict later voor aanmaken speciemn
 	    		
 	    		
 	    		System.out.println("non rep cert of cardholder in array: " + TextUtils.hexDump(belpicCard.readNonRepCertificateBytes()));

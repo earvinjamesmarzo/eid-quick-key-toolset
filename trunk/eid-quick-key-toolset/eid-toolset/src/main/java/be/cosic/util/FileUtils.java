@@ -2,11 +2,19 @@ package be.cosic.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+
+import be.cosic.eidtoolset.eidlibrary.MasterFile;
 
 public class FileUtils {
 
@@ -53,4 +61,38 @@ public class FileUtils {
 	}
 
 
+	/**
+	 * Write a Masterfile to an xml document
+	 * @param masterf
+	 * @param pathname
+	 * @throws JAXBException
+	 * @throws IOException
+	 */
+	public static void writeDocument( MasterFile masterf, String pathname )
+    		throws JAXBException, IOException {
+
+	    JAXBContext context =
+	        JAXBContext.newInstance( masterf.getClass().getPackage().getName() );
+	    Marshaller m = context.createMarshaller();
+	    m.setProperty( Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE );
+	    m.marshal( masterf, new FileOutputStream( pathname ) );
+	}
+	
+	
+	/**
+	 * Load a Masterfile using a .xml pathname
+	 * @param pathname
+	 * @return
+	 * @throws JAXBException
+	 * @throws IOException
+	 */
+	public static MasterFile readDocument(String pathname )
+		throws JAXBException, IOException {
+
+		JAXBContext context =
+			JAXBContext.newInstance( MasterFile.class.getPackage().getName() );
+		Unmarshaller u = context.createUnmarshaller();
+		return (MasterFile)u.unmarshal( new File( pathname ) );
+	}
+	
 }

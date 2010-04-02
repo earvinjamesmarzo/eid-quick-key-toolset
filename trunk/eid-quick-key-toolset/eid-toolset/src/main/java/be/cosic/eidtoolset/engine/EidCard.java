@@ -10,6 +10,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
@@ -49,6 +51,7 @@ import be.cosic.eidtoolset.gui.PinPad;
 import be.cosic.eidtoolset.interfaces.BelpicCommandsEngine;
 import be.cosic.eidtoolset.interfaces.EidCardInterface;
 import be.cosic.util.CryptoUtils;
+import be.cosic.util.FileUtils;
 import be.cosic.util.MathUtils;
 import be.cosic.util.TextUtils;
 import be.cosic.util.TimeUtils;
@@ -103,7 +106,7 @@ public class EidCard extends SmartCard implements EidCardInterface,
 	
 	private static boolean specimen_certificate_set = false;
 	
-	public EidCard(int type, String appName) {
+	public EidCard(int type, String appName) throws JAXBException, IOException, CertificateException, NoSuchAlgorithmException {
 		
 		myType = type;
 		
@@ -137,12 +140,23 @@ public class EidCard extends SmartCard implements EidCardInterface,
 		mf.setIDDirectory(idd);
 		
 		
+		
 		//TODO initialise private and public specimen key: from fedict?
+		KeyPairGenerator gen = KeyPairGenerator.getInstance("RSA");
+		gen.initialize(1024);
+		KeyPair kp = gen.generateKeyPair();
+		specimen_priv = (RSAPrivateCrtKey) kp.getPrivate();
+		
 		
 		//TODO create three CA certificates with this specimen key: from fedict? or copy of existing with new siganture
-		specimenCACert = null;
-		specimenRootCACert = null;
-		specimenRRNCert = null;
+			// HAve a certificate factory /x509utils to make them? 
+		libraryToEid("C:\\test.xml");
+		
+		specimenCACert = X509Utils.deriveCertificateFrom(mf.getBelPicDirectory().getCaCertificate().getFileData());
+		specimenRootCACert = X509Utils.deriveCertificateFrom(mf.getBelPicDirectory().getRootCaCertificate().getFileData());
+		specimenRRNCert = X509Utils.deriveCertificateFrom(mf.getBelPicDirectory().getRrnCertificate().getFileData());
+		
+		//TODO ?certificaten aanpassen: nieuwe signature?? heeft dit nu of beter gewoon helemaal nieuwe certificaten te gebruiken?
 		
 	}
 
@@ -548,7 +562,7 @@ public class EidCard extends SmartCard implements EidCardInterface,
 		
 		
 		
-		writeDocument(mf, path);
+		FileUtils.writeDocument(mf, path);
 	
 	}
 	
@@ -560,48 +574,9 @@ public class EidCard extends SmartCard implements EidCardInterface,
 	 * @throws IOException
 	 */
 	public void libraryToEid(String path) throws JAXBException, IOException{
-		mf = readDocument(path);
+		mf = FileUtils.readDocument(path);
 	}
 	
-	/**
-	 * Write a Masterfile to an xml document
-	 * @param masterf
-	 * @param pathname
-	 * @throws JAXBException
-	 * @throws IOException
-	 */
-	public void writeDocument( MasterFile masterf, String pathname )
-    		throws JAXBException, IOException {
-
-	    JAXBContext context =
-	        JAXBContext.newInstance( masterf.getClass().getPackage().getName() );
-	    Marshaller m = context.createMarshaller();
-	    m.setProperty( Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE );
-	    m.marshal( masterf, new FileOutputStream( pathname ) );
-	}
-	
-	//TODO: check util.Fileutils for overlap with following two methods: merge
-	
-	/**
-	 * Load a Masterfile using a .xml pathname
-	 * @param pathname
-	 * @return
-	 * @throws JAXBException
-	 * @throws IOException
-	 */
-	public MasterFile readDocument(String pathname )
-		throws JAXBException, IOException {
-
-		JAXBContext context =
-			JAXBContext.newInstance( MasterFile.class.getPackage().getName() );
-		Unmarshaller u = context.createUnmarshaller();
-		return (MasterFile)u.unmarshal( new File( pathname ) );
-	}
-	
-
-
-
-
 	
 	public byte[] generateSignature(byte[] preparationCommand,
 			byte[] signatureGenerationCommand, byte[] datahash)
@@ -669,45 +644,7 @@ public class EidCard extends SmartCard implements EidCardInterface,
 	//changing ID values. Changing ID values means changing signature on them 
 	//(using specimen National Register private key) and thus means changing certificates
 	
-	/*TODO: not necessary: only faster: can be removed
-	private void setRootCACertificateBytes(byte[] rootCACertificateBytes) {
-		
-		mf.getBelPicDirectory().getRootCaCertificate().setFileData(rootCACertificateBytes);
-	}
-
-	private void setCaCertificateBytes(byte[] caCertificateBytes) {
-
-		mf.getBelPicDirectory().getCaCertificate().setFileData(caCertificateBytes);
-	}
-
-	private void setRrnCertificateBytes(byte[] rrnCertificateBytes) {
-
-		mf.getBelPicDirectory().getRrnCertificate().setFileData(rrnCertificateBytes);
-	}
 	
-	private void setAuthenticationCertificateBytes(
-			byte[] authenticationCertificateBytes) {
-		mf.getBelPicDirectory().getAuthenticationCertificate().setFileData(authenticationCertificateBytes);
-	}
-
-	private void setNonRepudiationCertificateBytes(
-			byte[] nonRepudiationCertificateBytes) {
-		mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(nonRepudiationCertificateBytes);
-	}
-
-	
-	
-	
-	private void setIdentityFileSignatureBytes(byte[] identityFileSignatureBytes) {
-		
-		mf.getIDDirectory().getIdentityFileSignature().setFileData(identityFileSignatureBytes);
-	}
-
-	
-	private void setAddressFileSignatureBytes(byte[] addressFileSignatureBytes) {
-		
-		mf.getIDDirectory().getAddressFileSignature().setFileData(addressFileSignatureBytes);
-	}*/
 
 	
 
@@ -768,13 +705,18 @@ public class EidCard extends SmartCard implements EidCardInterface,
 			mf.getBelPicDirectory().getRrnCertificate().setFileData(specimenRRNCert.getEncoded());
 		}
 		
+		
+		
 		//the auth en nonrep cert have to be created using the public key of the old cert.
 		//the new id data should be changed first
-		byte[] newAuthCert = X509Utils.changeCertSignature(X509Utils.changeCertSubjectData(mf.getBelPicDirectory().getAuthenticationCertificate().getFileData(), citizenIdentityFileBytes), specimen_priv);
-		mf.getBelPicDirectory().getAuthenticationCertificate().setFileData(newAuthCert);
 		
-		byte[] newNonRepCert = X509Utils.changeCertSignature(X509Utils.changeCertSubjectData(mf.getBelPicDirectory().getNonRepudiationCertificate().getFileData(), citizenIdentityFileBytes), specimen_priv);
-		mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(newNonRepCert);
+		//TODO probleem: veranderen van signature in cert, maakt cert ongeldig: wat hier aan te doen: ook totale lengte van verschillende subdelen veranderen
+		
+		//byte[] newAuthCert = X509Utils.changeCertSignature(X509Utils.changeCertSubjectData(mf.getBelPicDirectory().getAuthenticationCertificate().getFileData(), citizenIdentityFileBytes), specimen_priv);
+		//mf.getBelPicDirectory().getAuthenticationCertificate().setFileData(newAuthCert);
+		
+		//byte[] newNonRepCert = X509Utils.changeCertSignature(X509Utils.changeCertSubjectData(mf.getBelPicDirectory().getNonRepudiationCertificate().getFileData(), citizenIdentityFileBytes), specimen_priv);
+		//mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(newNonRepCert);
 	
 	}
 
