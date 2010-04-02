@@ -4,8 +4,8 @@ package be.cosic.eidapplet;
 import javacard.framework.*;
 import javacard.security.*;
 import javacardx.crypto.*;
-//import visa.openplatform.*; Proprietary JCOP Use globalplatform instead
 
+//import visa.openplatform.*; either this or the Global Platform is implemented
 import org.globalplatform.GPSystem;
 
 
