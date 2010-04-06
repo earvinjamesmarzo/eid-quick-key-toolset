@@ -140,23 +140,23 @@ public class EidCard extends SmartCard implements EidCardInterface,
 		mf.setIDDirectory(idd);
 		
 		
-		
-		//TODO initialise private and public specimen key: from fedict?
+		//Next: not necessary as key & certificate management goes by fedict
+		/*
+		//Initialise private and public specimen key: from fedict?
 		KeyPairGenerator gen = KeyPairGenerator.getInstance("RSA");
 		gen.initialize(1024);
 		KeyPair kp = gen.generateKeyPair();
 		specimen_priv = (RSAPrivateCrtKey) kp.getPrivate();
 		
 		
-		//TODO create three CA certificates with this specimen key: from fedict? or copy of existing with new siganture
+		//Create three CA certificates with this specimen key: from fedict (current) or copy of existing with new siganture
 			// HAve a certificate factory /x509utils to make them? 
 		libraryToEid("C:\\test.xml");
 		
 		specimenCACert = X509Utils.deriveCertificateFrom(mf.getBelPicDirectory().getCaCertificate().getFileData());
 		specimenRootCACert = X509Utils.deriveCertificateFrom(mf.getBelPicDirectory().getRootCaCertificate().getFileData());
 		specimenRRNCert = X509Utils.deriveCertificateFrom(mf.getBelPicDirectory().getRrnCertificate().getFileData());
-		
-		//TODO ?certificaten aanpassen: nieuwe signature?? heeft dit nu of beter gewoon helemaal nieuwe certificaten te gebruiken?
+		*/
 		
 	}
 
@@ -661,12 +661,12 @@ public class EidCard extends SmartCard implements EidCardInterface,
 		System.arraycopy(photoHash, 0, id, (id.length-photoHash.length), photoHash.length);
 		mf.getIDDirectory().getIdentityFile().setFileData(id);
 		
-		//3. change signature on id field
-		byte[] sigBuffer = CryptoUtils.signSha1Rsa1024(id, specimen_priv);
-		mf.getIDDirectory().getIdentityFileSignature().setFileData(sigBuffer);
+		//3. change signature on id field: should be done externally
+		//byte[] sigBuffer = CryptoUtils.signSha1Rsa1024(id, specimen_priv);
+		//mf.getIDDirectory().getIdentityFileSignature().setFileData(sigBuffer);
 		
-		//4. change all certificates to specimen ones if not already done (use boolean)
-		if(!specimen_certificate_set){
+		//4. change all certificates to specimen ones if not already done (use boolean): should be done externally
+		/*if(!specimen_certificate_set){
 			//the tree fixed specimen CA certificates can be hardcoded: just encode them and set them: see constructor
 			mf.getBelPicDirectory().getCaCertificate().setFileData(specimenCACert.getEncoded());
 			mf.getBelPicDirectory().getRootCaCertificate().setFileData(specimenRootCACert.getEncoded());
@@ -679,7 +679,7 @@ public class EidCard extends SmartCard implements EidCardInterface,
 			
 			byte[] newNonRepCert = X509Utils.changeCertSignature(mf.getBelPicDirectory().getNonRepudiationCertificate().getFileData(), specimen_priv);
 			mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(newNonRepCert);
-		}
+		}*/
 		
 		
 	}
@@ -693,28 +693,21 @@ public class EidCard extends SmartCard implements EidCardInterface,
 		System.arraycopy(id, (id.length-20), citizenIdentityFileBytes, citizenIdentityFileBytes.length - 20, 20);
 		mf.getIDDirectory().getIdentityFile().setFileData(citizenIdentityFileBytes);
 		
-		//2. change signature on id field and chip number in tokeninfo if changed
-		byte[] sigBuffer = CryptoUtils.signSha1Rsa1024(citizenIdentityFileBytes, specimen_priv);
-		mf.getIDDirectory().getIdentityFileSignature().setFileData(sigBuffer);
+		//2. change signature on id field and chip number in tokeninfo if changed: should be done externally
+		//byte[] sigBuffer = CryptoUtils.signSha1Rsa1024(citizenIdentityFileBytes, specimen_priv);
+		//mf.getIDDirectory().getIdentityFileSignature().setFileData(sigBuffer);
 		
-		//3. change all certificates to specimen ones if not already done (use boolean)
-		if(!specimen_certificate_set){
+		//3. change all certificates to specimen ones if not already done (use boolean): should be done externally
+		/*if(!specimen_certificate_set){
 			//the tree fixed specimen CA certificates can be hardcoded: just encode them and set them: see constructor
 			mf.getBelPicDirectory().getCaCertificate().setFileData(specimenCACert.getEncoded());
 			mf.getBelPicDirectory().getRootCaCertificate().setFileData(specimenRootCACert.getEncoded());
 			mf.getBelPicDirectory().getRrnCertificate().setFileData(specimenRRNCert.getEncoded());
-		}
+		}*/
 		
-		
-		
-		//the auth en nonrep cert have to be created using the public key of the old cert.
-		//the new id data should be changed first
-		
-		//TODO probleem: veranderen van signature in cert, maakt cert ongeldig: wat hier aan te doen: ook totale lengte van verschillende subdelen veranderen
-		
+		//Change user certificates so they contain new data: should be done externally
 		//byte[] newAuthCert = X509Utils.changeCertSignature(X509Utils.changeCertSubjectData(mf.getBelPicDirectory().getAuthenticationCertificate().getFileData(), citizenIdentityFileBytes), specimen_priv);
 		//mf.getBelPicDirectory().getAuthenticationCertificate().setFileData(newAuthCert);
-		
 		//byte[] newNonRepCert = X509Utils.changeCertSignature(X509Utils.changeCertSubjectData(mf.getBelPicDirectory().getNonRepudiationCertificate().getFileData(), citizenIdentityFileBytes), specimen_priv);
 		//mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(newNonRepCert);
 	
@@ -725,12 +718,12 @@ public class EidCard extends SmartCard implements EidCardInterface,
 		//1. set the address data
 		mf.getIDDirectory().getAddressFile().setFileData(citizenAddressBytes);
 		
-		//2. change the signature on the address file
-		byte[] sigBuffer = CryptoUtils.signSha1Rsa1024(citizenAddressBytes, specimen_priv);
-		mf.getIDDirectory().getAddressFileSignature().setFileData(sigBuffer);
+		//2. change the signature on the address file: should be done externally
+		//byte[] sigBuffer = CryptoUtils.signSha1Rsa1024(citizenAddressBytes, specimen_priv);
+		//mf.getIDDirectory().getAddressFileSignature().setFileData(sigBuffer);
 		
-		//3. change all certificates to specimen ones if not already done (use boolean)
-		if(!specimen_certificate_set){
+		//3. change all certificates to specimen ones if not already done (use boolean): should be done externally
+		/*if(!specimen_certificate_set){
 			//the tree fixed specimen CA certificates can be hardcoded: just encode them and set them: see constructor
 			mf.getBelPicDirectory().getCaCertificate().setFileData(specimenCACert.getEncoded());
 			mf.getBelPicDirectory().getRootCaCertificate().setFileData(specimenRootCACert.getEncoded());
@@ -742,7 +735,7 @@ public class EidCard extends SmartCard implements EidCardInterface,
 			
 			byte[] newNonRepCert = X509Utils.changeCertSignature(mf.getBelPicDirectory().getNonRepudiationCertificate().getFileData(), specimen_priv);
 			mf.getBelPicDirectory().getNonRepudiationCertificate().setFileData(newNonRepCert);
-		}
+		}*/
 	}
 
 	
@@ -769,7 +762,7 @@ public class EidCard extends SmartCard implements EidCardInterface,
 		mf.getIDDirectory().getCaRoleIDFile().setFileData(null);		
 		mf.getIDDirectory().getPreferencesFile().setFileData(null);
 		
-		specimen_certificate_set = false;
+		//For when certificates are adapted internally. Not the case now. specimen_certificate_set = false;
 	}
 
 	/**
@@ -1049,15 +1042,13 @@ public class EidCard extends SmartCard implements EidCardInterface,
 	
 	private byte[] writeAuthCertificateBytes() throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
 		
-		//TODO: new certificate on public key of new card should be build
-		//use X509Utils for this
+		//New certificate on public key of new card should be build: should be done externally
 		return writeBinaryFile(selectAuthenticationCertificateCommand, readAuthCertificateBytes());
 	}
 	
 	private byte[] writeNonRepCertificateBytes() throws NoSuchFeature, NoSuchAlgorithmException, NoReadersAvailable, CardException, AIDNotFound, InvalidResponse, NoCardConnected, GeneralSecurityException {
 		
-		//TODO: new certificate on public key of new card should be build
-		//use X509Utils for this
+		//New certificate on public key of new card should be build: should be done externally
 		return writeBinaryFile(selectNonRepudiationCertificateCommand, readNonRepCertificateBytes());
 	}
 	
