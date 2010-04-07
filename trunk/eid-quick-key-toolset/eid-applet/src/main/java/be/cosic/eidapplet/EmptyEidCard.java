@@ -41,7 +41,7 @@ public class EmptyEidCard extends EidCard {
 		initializeEmptyLargeFiles();
 
 		// initialize basic keys pair
-		initializeBasicKeyPair();
+		initializeKeyPairs();
 
 	}
 
@@ -132,7 +132,7 @@ public class EmptyEidCard extends EidCard {
 	 * 
 	 * see "Belgian Electronic Identity Card content" (version 2.2)
 	 * 
-	 * TODO: check all max lengths and fix if necessary
+	 * TODO: check all max lengths and fix if necessary: check when key for example rsa 2048: both public key and signature double in length!
 	 * 
 	 * e.g. //TODO: depending on the edi card version, the address is of different length (current: 117)
 	 */
@@ -1407,7 +1407,7 @@ public class EmptyEidCard extends EidCard {
 	/**
 	 * initialize basic key pair
 	 */
-	private void initializeBasicKeyPair() {
+	private void initializeKeyPairs() {
 		
 		/*
 		 * basicKeyPair is static (so same for all applets)
@@ -1422,11 +1422,22 @@ public class EmptyEidCard extends EidCard {
 		 * $ openssl genrsa -out key 1024
 		 * $ openssl rsa -in key -text -noout
 		 */
-		RSAPrivateCrtKey privateKey =
+		
+		
+		basicKeyPair = new KeyPair(KeyPair.ALG_RSA_CRT, (short)1024);
+		basicKeyPair.genKeyPair();
+		
+		authPrivateKey =
 			(RSAPrivateCrtKey)KeyBuilder.buildKey(
 				KeyBuilder.TYPE_RSA_CRT_PRIVATE,
 				KeyBuilder.LENGTH_RSA_1024,
 				false);
+		nonRepPrivateKey =
+			(RSAPrivateCrtKey)KeyBuilder.buildKey(
+					KeyBuilder.TYPE_RSA_CRT_PRIVATE,
+					KeyBuilder.LENGTH_RSA_1024,
+					false);
+		
 
 		/*byte[] P =
 			{

@@ -11,11 +11,7 @@ import org.globalplatform.GPSystem;
 
 
 /*
- * TODO: 
- * - test both T=0 and T=1! does get result work?
- * - explain "verify activation pin +update binary + personalized" hack better
- * - how does administrator pin change work?
- * - documentation correct? make JavaDoc work
+ * 
  */
 
 public class EidCard extends javacard.framework.Applet {
@@ -25,30 +21,44 @@ public class EidCard extends javacard.framework.Applet {
 	private final static byte EIDCARD_CLA = (byte)0x00;
 
 	// codes of INS byte in the command APDUs
-	private final static byte INS_VERIFY_PIN = (byte)0x20;
-	private final static byte INS_CHANGE_PIN = (byte)0x24;
-	private final static byte INS_UNBLOCK = (byte)0x2C;
-	private final static byte INS_PREPARE_SIGNATURE = (byte)0x22;
-	private final static byte INS_GENERATE_SIGNATURE = (byte)0x2A;
 	private final static byte INS_GET_RESPONSE = (byte)0xC0;
-	private final static byte INS_GET_CHALLENGE = (byte)0x84;
+	
 	private final static byte INS_SELECT_FILE = (byte)0xA4;
 	private final static byte INS_ACTIVATE_FILE = (byte)0x44;
 	private final static byte INS_DEACTIVATE_FILE = (byte)0x04;
 	private final static byte INS_READ_BINARY = (byte)0xB0;
 	private final static byte INS_UPDATE_BINARY = (byte)0xD6;
 	private final static byte INS_ERASE_BINARY = (byte)0x0E;
-	private final static byte INS_EXTERNAL_AUTHENTICATE = (byte)0x82;
+	
+	private final static byte INS_VERIFY_PIN = (byte)0x20;
+	private final static byte INS_CHANGE_PIN = (byte)0x24;
+	private final static byte INS_UNBLOCK = (byte)0x2C;
+	
+	private final static byte INS_GET_CHALLENGE = (byte)0x84;
 	private final static byte INS_INTERNAL_AUTHENTICATE = (byte)0x88;
-	private final static byte INS_GENERATE_KEYPAIR = (byte)0x46;
+	private final static byte INS_EXTERNAL_AUTHENTICATE = (byte)0x82;
 	private final static byte INS_ENVELOPE = (byte)0xC2;
-
+	
+	private final static byte INS_PREPARE_SIGNATURE = (byte)0x22;
+	private final static byte INS_GENERATE_SIGNATURE = (byte)0x2A;
+	private final static byte INS_GENERATE_KEYPAIR = (byte)0x46;
+	private final static byte INS_GET_KEY = (byte)0xE2;
+	private final static byte INS_PUT_KEY = (byte)0xF2;
+	private final static byte INS_ERASE_KEY = (byte)0xF4;
+	private final static byte INS_ACTIVATE_KEY = (byte)0xF6;
+	private final static byte INS_DEACTIVATE_KEY = (byte)0xF8;
+	
+	private final static byte INS_GET_CARD_DATA = (byte)0xE4;
+	private final static byte INS_LOG_OFF = (byte)0xE6;
+	private final static byte INS_BLOCK = (byte)0xE8;
+	
 	private byte[] previousApduType; // transient byte array with 1 element
 	// "generate signature" needs to know whether the previous APDU checked the 
 	// cardholder PIN
 	private final static byte VERIFY_CARDHOLDER_PIN = (byte)0x01;
 	// PIN Change needs to know whether the previous APDU checked the reset PIN
 	private final static byte VERIFY_RESET_PIN = (byte)0x02;
+	private final static byte GENERATE_KEY_PAIR = (byte)0x03;
 	private final static byte OTHER = (byte)0x00;
 
 	/* applet specific status words */
@@ -140,6 +150,8 @@ public class EidCard extends javacard.framework.Applet {
 	protected RSAPrivateCrtKey authPrivateKey, nonRepPrivateKey;
 	// make this static to save some memory
 	protected static KeyPair basicKeyPair;
+	
+	protected static RSAPublicKey tempPublicRSAKey;
 
 	// reuse these objects in all subclasses, otherwise we will use up all memory
 	private static Cipher cipher;
@@ -246,6 +258,8 @@ public class EidCard extends javacard.framework.Applet {
 	 */
 	protected EidCard() {
 
+		
+		
 		randomBuffer = new byte[256];
 		responseBuffer = new byte[128];
 
@@ -373,11 +387,38 @@ public class EidCard extends javacard.framework.Applet {
 			case INS_GENERATE_SIGNATURE :
 				generateSignature(apdu, buffer);
 				break;
+			case INS_GENERATE_KEYPAIR :
+				generateKeyPair(apdu, buffer);
+				break;	
+			case INS_GET_KEY :
+				getPublicKey(apdu, buffer);
+				break;	
+			case INS_PUT_KEY :
+				putPublicKey(apdu, buffer);
+				break;		
+			case INS_ERASE_KEY :
+				eraseKey(apdu, buffer);
+				break;		
+			case INS_ACTIVATE_KEY :
+				activateKey(apdu, buffer);
+				break;	
+			case INS_DEACTIVATE_KEY :
+				deactivateKey(apdu, buffer);
+				break;	
+				
+				
+			case INS_GET_CARD_DATA :
+				getCardData(apdu, buffer);
+				break;	
+			case INS_LOG_OFF :
+				logOff(apdu, buffer);
+				break;	
+				
 			case INS_INTERNAL_AUTHENTICATE :
 				internalAuthenticate(apdu, buffer);
 				break;
 			case INS_GET_RESPONSE :
-				//TODO: if only T=0 supported: remove
+				//if only T=0 supported: remove
 				// not possible in case of T=0 protocol
 				if (APDU.getProtocol() == APDU.PROTOCOL_T1)
 					getResponse(apdu, buffer);
@@ -386,6 +427,12 @@ public class EidCard extends javacard.framework.Applet {
 				break;
 			case INS_SELECT_FILE :
 				selectFile(apdu, buffer);
+				break;
+			case INS_ACTIVATE_FILE :
+				activateFile(apdu, buffer);
+				break;
+			case INS_DEACTIVATE_FILE :
+				deactivateFile(apdu, buffer);
 				break;
 			case INS_READ_BINARY :
 				readBinary(apdu, buffer);
@@ -402,7 +449,62 @@ public class EidCard extends javacard.framework.Applet {
 		}
 
 	}
+	/**
+	 * Gives back information on this eID
+	 * @param apdu
+	 * @param buffer
+	 */
+	private void getCardData(APDU apdu, byte[] buffer){
+		// check P1 and P2
+		if (buffer[ISO7816.OFFSET_P1] != (byte)0x00
+			|| buffer[ISO7816.OFFSET_P2] != (byte)0x00)
+			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+		
+		// inform the JCRE that the applet has data to return
+		short le = apdu.setOutgoing();
 
+		// check Le
+		if (le != (short)(28))
+			ISOException.throwIt((short)(ISO7816.SW_WRONG_LENGTH));
+		
+		
+		
+		byte[] tempBuffer = new byte[le];
+		
+		//Set serial number
+		Util.arrayCopy(tokenInfo.getData(), (short) 7, tempBuffer, (short) 0, (short) 16);
+		
+		//Set component code: TODO vragen danny
+		
+		
+		//Set OS number: TODO vragen danny
+		
+		
+		//Set OS version: TODO vragen danny
+		
+		//Set softmask number: TODO vragen danny
+		
+		//Set softmask version: TODO vragen danny
+		
+		//Set applet version: TODO vragen danny: 4 bytes in file system
+		
+		
+		//Set Interface version: TODO vragen danny
+		
+		//Set PKCS#15 version: TODO vragen danny
+		
+		//Set applet life cycle
+		tempBuffer[(short)(le-1)] = GPSystem.getCardState();
+		
+		// set the actual number of outgoing data bytes
+		apdu.setOutgoingLength(le);
+		// send content of buffer in apdu
+		apdu.sendBytesLong(tempBuffer, (short)0, le);
+	}
+
+	
+	
+	
 	/**
 	 * verify the PIN
 	 */
@@ -441,7 +543,7 @@ public class EidCard extends javacard.framework.Applet {
 				checkPin(resetPin, buffer);
 				break;
 			case UNBLOCK_PIN :
-				// check the unblock PIN
+				// check the unblock PIN: after this, the pin will be 'activated'
 				checkPin(unblockPin, buffer);
 				break;
 			default :
@@ -549,8 +651,9 @@ public class EidCard extends javacard.framework.Applet {
 	 */
 	private void administratorChangePin(APDU apdu, byte[] buffer) {
 
-		// TODO: how does this work on a real eID card?
-		// TODO: what if the previous getChallenge() only asked for 1 byte?
+		
+		// The previous getChallenge() should ask for at least the length of the 
+		// new administrator pin. Otherwize exception is thrown
 
 		/*
 		 * IMPORTANT: the previous APDU type has to be overwritten in every 
@@ -653,6 +756,26 @@ public class EidCard extends javacard.framework.Applet {
 
 		return true;
 
+	}
+	
+	
+	/**
+	 * Discard current fulfilled access conditions
+	 */
+	private void logOff(APDU apdu, byte[] buffer){
+		// check P1 and P2
+		if (buffer[ISO7816.OFFSET_P1] != (byte)0x00
+			|| buffer[ISO7816.OFFSET_P2] != (byte)0x00)
+			ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+		
+		// remove previous access conditions:
+		setPreviousApduType(OTHER);
+		setSignatureType(NO_SIGNATURE);
+		
+		cardholderPin.reset();
+		resetPin.reset();
+		unblockPin.reset();
+		activationPin.reset();
 	}
 
 	/**
@@ -952,9 +1075,237 @@ public class EidCard extends javacard.framework.Applet {
 			(short)header.length);
 
 	}
+	
+	/**
+	 * generate a key pair
+	 * TODO check what for commune, role and basic keys
+	 * only the private key will be stored in the eid. the get public key method should be 
+	 * called directly after this method, otherwise the public key will be discarded
+	 * security conditions depend on the key to generate
+	 * the role R03 (see belgian eid card content) shall be verified for changing authentication or non repudiation keys.
+	 */
+	private void generateKeyPair(APDU apdu, byte[] buffer) {
+		// check P1 and P2
+		if (buffer[ISO7816.OFFSET_P1] != (byte)0x00)
+			ISOException.throwIt(ISO7816.SW_WRONG_P1P2);
+
+		// check Lc
+		short lc = (short) (buffer[ISO7816.OFFSET_LC] & 0x00FF);
+		if (lc != 11)
+			ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+		
+		//TODO: check security conditions if for auth and nonrep keys: role R03
+		
+		
+		
+		
+		//create keypair using parameters given:
+		short keyLength = Util.makeShort(buffer[ISO7816.OFFSET_CDATA], buffer[ISO7816.OFFSET_CDATA+1]);
+		
+		if (keyLength != (short)128)
+			ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+		
+		KeyPair kp = new KeyPair(KeyPair.ALG_RSA_CRT, keyLength);
+		kp.genKeyPair();
+		((RSAPublicKey)kp.getPublic()).setExponent(buffer, (short)(ISO7816.OFFSET_CDATA + 3), (short)buffer[ISO7816.OFFSET_CDATA + 2]);
+		
+		
+		
+		setPreviousApduType(GENERATE_KEY_PAIR);
+		
+		switch(buffer[ISO7816.OFFSET_P2]){
+			case BASIC :
+				basicKeyPair = kp;
+				break;
+			case CA_ROLE :
+				roleKeyPair = kp;
+				break;
+			case COMMUNE :
+				communeKeyPair = kp;
+				break;
+			case AUTHENTICATION : // use authentication private key
+				authPrivateKey = (RSAPrivateCrtKey) kp.getPrivate();
+				tempPublicRSAKey = (RSAPublicKey) kp.getPublic();
+				break;
+			case NON_REPUDIATION : // use non repudiation private key
+				nonRepPrivateKey = (RSAPrivateCrtKey) kp.getPrivate();
+				tempPublicRSAKey = (RSAPublicKey) kp.getPublic();
+				break;
+			default :
+				ISOException.throwIt(SW_REFERENCE_DATA_NOT_FOUND);
+				break;
+		}
+	}
+	
+	
+	/**
+	 * get a public key.
+	 * for the authentication and non-repudiation key, this method can only be called after the generateKeyPair method was called
+	 * TODO check what other keys (basic, role and commune) are to get here
+	 */
+	private void getPublicKey(APDU apdu, byte[] buffer) {
+		
+		// check P1
+		if (buffer[ISO7816.OFFSET_P1] != (byte)0x00)
+			ISOException.throwIt(ISO7816.SW_WRONG_P1P2);
+
+		// inform the JCRE that the applet has data to return
+		short le = apdu.setOutgoing();
+
+		// Le = 0 isnot allowed
+		if (le != (short)(5 + 8 + 128))
+			ISOException.throwIt((short)(SW_WRONG_LENGTH_00 + (5+8+128)));
+		
+		// set the actual number of outgoing data bytes
+		apdu.setOutgoingLength(le);
+		
+		byte[] tempBuffer = new byte[le];
+		
+		tempBuffer[(short)0] = (byte)0x02;
+		tempBuffer[(short)1] = (byte)0x08;
+		
+		tempBuffer[(short)10] = (byte)0x03;
+		tempBuffer[(short)11] = (byte)0x81;
+		tempBuffer[(short)12] = (byte)0x80;
+		
+		if (buffer[ISO7816.OFFSET_P2] == AUTHENTICATION || buffer[ISO7816.OFFSET_P2] == NON_REPUDIATION){
+			if (getPreviousApduType() != GENERATE_KEY_PAIR){
+				tempPublicRSAKey = null;
+				setPreviousApduType(OTHER);
+				ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+			}
+			tempPublicRSAKey.getExponent(tempBuffer, (short)2);
+			tempPublicRSAKey.getModulus(tempBuffer, (short)13);
+			
+		}else if(buffer[ISO7816.OFFSET_P2] == BASIC){
+			((RSAPublicKey)basicKeyPair.getPublic()).getExponent(tempBuffer, (short)2);
+			((RSAPublicKey)basicKeyPair.getPublic()).getModulus(tempBuffer, (short)13);
+		}else if(buffer[ISO7816.OFFSET_P2] == CA_ROLE){
+			((RSAPublicKey)roleKeyPair.getPublic()).getExponent(tempBuffer, (short)2);
+			((RSAPublicKey)roleKeyPair.getPublic()).getModulus(tempBuffer, (short)13);
+		}else if(buffer[ISO7816.OFFSET_P2] == COMMUNE){
+			((RSAPublicKey)communeKeyPair.getPublic()).getExponent(tempBuffer, (short)2);
+			((RSAPublicKey)communeKeyPair.getPublic()).getModulus(tempBuffer, (short)13);
+		}else{
+			ISOException.throwIt(SW_REFERENCE_DATA_NOT_FOUND);
+		}
+
+		setPreviousApduType(OTHER);
+		tempPublicRSAKey = null;
+		
+		// send content of buffer in apdu
+		apdu.sendBytesLong(tempBuffer, (short)0, le);
+	}
+		
+	
+	/**
+	 * put a public key as commune or role key
+	 * TODO: check what these keys are and check security conditions for them
+	 */
+	private void putPublicKey(APDU apdu, byte[] buffer) {
+		// check P1
+		if (buffer[ISO7816.OFFSET_P1] != (byte)0x01)
+			ISOException.throwIt(ISO7816.SW_WRONG_P1P2);
+
+		// check Lc
+		short lc = (short) (buffer[ISO7816.OFFSET_LC] & 0x00FF);
+		if (lc != (short)(5 + 8 + 128))
+			ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
+		
+		switch(buffer[ISO7816.OFFSET_P2]){
+		case CA_ROLE :
+			//role key
+			((RSAPublicKey)roleKeyPair.getPublic()).setExponent(buffer, (short)(ISO7816.OFFSET_CDATA + 2), (short)buffer[ISO7816.OFFSET_CDATA + 1]);
+			((RSAPublicKey)roleKeyPair.getPublic()).setModulus(buffer, (short)(ISO7816.OFFSET_CDATA + 2 + buffer[ISO7816.OFFSET_CDATA + 1] + 3), (short)buffer[ISO7816.OFFSET_CDATA + 2 + buffer[ISO7816.OFFSET_CDATA + 1] + 2]);
+			break;
+		case COMMUNE :
+			//commune key
+			((RSAPublicKey)communeKeyPair.getPublic()).setExponent(buffer, (short)(ISO7816.OFFSET_CDATA + 2), (short)buffer[ISO7816.OFFSET_CDATA + 1]);
+			((RSAPublicKey)communeKeyPair.getPublic()).setModulus(buffer, (short)(ISO7816.OFFSET_CDATA + 2 + buffer[ISO7816.OFFSET_CDATA + 1] + 3), (short)buffer[ISO7816.OFFSET_CDATA + 2 + buffer[ISO7816.OFFSET_CDATA + 1] + 2]);
+			break;
+		default :
+			ISOException.throwIt(SW_REFERENCE_DATA_NOT_FOUND);
+			break;
+		}
+	}
+	
+	/**
+	 * erase a public key (basic, commune or role key)
+	 * TODO: check what these keys are and check security conditions for erasing them. also check what erasing is: null or putting modulus and exponent to ff
+	 * TODO: check if possible for auth and nonrep and what security conditions are then
+	 */
+	private void eraseKey(APDU apdu, byte[] buffer) {
+		// check P1
+		if (buffer[ISO7816.OFFSET_P1] != (byte)0x00)
+			ISOException.throwIt(ISO7816.SW_WRONG_P1P2);
+		
+		switch(buffer[ISO7816.OFFSET_P2]){
+		case BASIC :
+			basicKeyPair = null;
+			break;
+		case CA_ROLE :
+			roleKeyPair = null;
+			break;
+		case COMMUNE :
+			communeKeyPair = null;
+			break;
+		default :
+			ISOException.throwIt(SW_REFERENCE_DATA_NOT_FOUND);
+			break;
+		}
+	}
+	
+	
+	/**
+	 * activate a public authentication or non repudiation key if deactivated
+	 * TODO check security conditions for doing so
+	 */
+	private void activateKey(APDU apdu, byte[] buffer) {
+		// check P1
+		if (buffer[ISO7816.OFFSET_P1] != (byte)0x00)
+			ISOException.throwIt(ISO7816.SW_WRONG_P1P2);
+		
+		switch(buffer[ISO7816.OFFSET_P2]){
+		case AUTHENTICATION :
+			//TODO activate key: check what this implies
+			break;
+		case NON_REPUDIATION :
+			//TODO activate key: check what this implies
+			break;
+		default :
+			ISOException.throwIt(SW_REFERENCE_DATA_NOT_FOUND);
+			break;
+		}
+	}
+		
 
 	/**
+	 * deactivate a public authentication or non repudiation key if activated
+	 * TODO check security conditions for doing so
+	 */
+	private void deactivateKey(APDU apdu, byte[] buffer) {
+		// check P1
+		if (buffer[ISO7816.OFFSET_P1] != (byte)0x00)
+			ISOException.throwIt(ISO7816.SW_WRONG_P1P2);
+		
+		switch(buffer[ISO7816.OFFSET_P2]){
+		case AUTHENTICATION :
+			//TODO deactivate key: check what this implies
+			break;
+		case NON_REPUDIATION :
+			//TODO deactivate key: check what this implies
+			break;
+		default :
+			ISOException.throwIt(SW_REFERENCE_DATA_NOT_FOUND);
+			break;
+		}
+	}
+	
+	
+	
+	/**
 	 * internal authenticate generates a signature with the basic private key
+	 * no security conditions needed if used for internal authentication only (Mutual authentication not supported)
 	 */
 	private void internalAuthenticate(APDU apdu, byte[] buffer) {
 
@@ -1017,10 +1368,11 @@ public class EidCard extends javacard.framework.Applet {
 
 	/**
 	 * return the generated signature in a response APDU
+	 * Used in T=0 protocol
 	 */
 	private void getResponse(APDU apdu, byte[] buffer) {
 
-		// TODO: can this be used to retrieve other responses as well?
+		// can this be used to retrieve other responses as well?
 		// should this implementation be made more general?
 
 		// use P1 and P2 as offset
@@ -1030,14 +1382,13 @@ public class EidCard extends javacard.framework.Applet {
 				buffer[ISO7816.OFFSET_P2]);
 
 		if (offset > responseBuffer.length)
-			// TODO: correct error message?
 			ISOException.throwIt(ISO7816.SW_WRONG_P1P2);
 
 		// inform the JCRE that the applet has data to return
 		short le = apdu.setOutgoing();
 
 		// if Le = 0, then return the complete signature (128 bytes = 1024 bits)
-		// TODO: Le = 256 possible on real card?
+		// Le = 256 possible on real card
 		if ((le == 0) || (le == 256))
 			le = 128;
 
@@ -1061,9 +1412,9 @@ public class EidCard extends javacard.framework.Applet {
 		// inform the JCRE that the applet has data to return
 		short le = apdu.setOutgoing();
 
-		// Le = 0 is interpreted as 256 bytes
+		// Le = 0 isnot allowed
 		if (le == 0)
-			le = 256;
+			ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 
 		RandomData random = EidCard.randomData;
 
@@ -1103,6 +1454,7 @@ public class EidCard extends javacard.framework.Applet {
 
 	}
 
+	
 	/**
 	 * select file under the current DF
 	 */
@@ -1182,6 +1534,65 @@ public class EidCard extends javacard.framework.Applet {
 
 	}
 
+	/**
+	 * activate a file on the eID card
+	 * security conditions depend on file to activate: see begian eID content file 
+	 */
+	private void activateFile(APDU apdu, byte[] buffer) {
+		// check P2
+		if (buffer[ISO7816.OFFSET_P2] != (byte)0x0C)
+			ISOException.throwIt(ISO7816.SW_WRONG_P1P2);
+
+		// P1 determines the select method
+		switch (buffer[ISO7816.OFFSET_P1]) {
+			case (byte)0x02 :
+				selectByFileIdentifier(apdu, buffer);
+				break;
+			case (byte)0x08 :
+				selectByPath(apdu, buffer);
+				break;
+			default :
+				ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+				break;
+		}
+		selectedFile file activeren indien nog niet gedaan en security conditions satisfied
+		// check if activating this file is allowed
+		if (!fileAccessAllowed(ACTIVATE_BINARY))
+			ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+	}
+	
+	/**
+	 * deactivate a file on the eID card
+	 * security conditions depend on file to activate: see begian eID content file 
+	 */
+	private void deactivateFile(APDU apdu, byte[] buffer) {
+		
+		
+		// check P2
+		if (buffer[ISO7816.OFFSET_P2] != (byte)0x0C)
+			ISOException.throwIt(ISO7816.SW_WRONG_P1P2);
+
+		// P1 determines the select method
+		switch (buffer[ISO7816.OFFSET_P1]) {
+			case (byte)0x02 :
+				selectByFileIdentifier(apdu, buffer);
+				break;
+			case (byte)0x08 :
+				selectByPath(apdu, buffer);
+				break;
+			default :
+				ISOException.throwIt(ISO7816.SW_INCORRECT_P1P2);
+				break;
+		}
+		selectedFile file deactiveren indien nog niet gedaan en security conditions satisfied
+		zoiets:
+		// check if deactivating this file is allowed
+		if (!fileAccessAllowed(DEACTIVATE_BINARY))
+			ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
+		
+	}
+	
+	
 	/**
 	 * put file that was selected with SELECT FILE in a response APDU
 	 */
@@ -1293,6 +1704,10 @@ public class EidCard extends javacard.framework.Applet {
 			|| (byteRead == 0))
 			ISOException.throwIt(ISO7816.SW_WRONG_LENGTH);
 
+		//WHen first updating card: ?????????
+		//Set the ATR of this card
+		GPSystem.setATRHistBytes(baBuffer, sOffset, bLength)
+		
 		// update file
 		((ElementaryFile)selectedFile).updateData(
 			offset,
@@ -1320,7 +1735,9 @@ public class EidCard extends javacard.framework.Applet {
 			return true;
 
 		
-		//TODO: do as below for all possible authentications/access conditions
+		//TODO: do as below for all possible authentications/access conditions de pending on the selected file
+		
+		
 		// allow write access to the preference file if the cardholder pin was entered correctly
 		if ((selectedFile == preferencesFile) && cardholderPin.isValidated())
 			return true;
