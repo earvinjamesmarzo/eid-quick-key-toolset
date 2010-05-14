@@ -1,0 +1,14 @@
+mode_211
+#empty line for correspondance with other upload files (e.g. TPC_IM)
+enable_trace
+establish_context
+card_connect -readerNumber 2
+select -AID a000000003000000
+open_sc -security 3 -keyver 42 -mac_key 404142434445464748494A4B4C4D4E4F -enc_key 404142434445464748494A4B4C4D4E4F -kek_key 404142434445464748494A4B4C4D4E4F
+delete -AID a00000003029057000AD13100101FF
+delete -AID a00000003029057000AD13100101
+install -file be\cosic\eidapplet\javacard\eidapplet.cap -priv 2
+card_disconnect
+release_context
+
+
